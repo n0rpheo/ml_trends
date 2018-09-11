@@ -3,20 +3,25 @@ import time
 import datetime
 
 from langdetect import detect_langs  # https://pypi.org/project/langdetect/
+from langdetect.lang_detect_exception import LangDetectException
+
 from timeit import default_timer as timer
 from sklearn.externals import joblib
 
 
 def check_string_for_english(input_text):
-    detection = detect_langs(input_text)
+    try:
+        detection = detect_langs(input_text)
 
-    result = False
-    for lang in detection:
-        if lang.lang == 'en':
-            if lang.prob > 0.9:
-                result = True
+        result = False
+        for lang in detection:
+            if lang.lang == 'en':
+                if lang.prob > 0.9:
+                    result = True
 
-    return result
+        return result
+    except LangDetectException:
+        return False
 
 
 def check_array_for_english(input_text):
