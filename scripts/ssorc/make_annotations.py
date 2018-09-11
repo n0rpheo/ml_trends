@@ -90,31 +90,3 @@ for idx, filename in enumerate(to_process_list):
             pickle.dump(data, anno_file, protocol=pickle.HIGHEST_PROTOCOL)
 
 nlp.close()
-
-
-def paragraph_splitter(split_abstract):
-    max_para_title_words = 3    # Maximum Number of words for a line to be considered as a paragraph_title
-    min_para_words = 10         # Minimum Number of words for a line to be considered as a paragraph
-
-    lines = split_abstract.split('\n')
-    paragraph_title = ''
-    empty_line_allowed = False
-
-    paras = list()
-
-    for line in lines:
-        # Check if line matches a Paragraph-Title-Pattern
-        if len(line) > 0 and (len(line.split()) <= max_para_title_words or line == line.upper()):
-            paragraph_title = line
-            empty_line_allowed = True
-        elif len(line) > 0 and (len(line.split()) >= min_para_words):
-            para_data = dict()
-            para_data['paragraphContent'] = line
-            para_data['paragraphTitle'] = paragraph_title
-
-            paras.append(para_data)
-
-            empty_line_allowed = False
-        elif len(line) == 0 and not empty_line_allowed:
-            paragraph_title = ''
-
