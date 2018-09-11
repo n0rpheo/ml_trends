@@ -35,6 +35,10 @@ class DBConnector:
                             "author TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,"
                             "PRIMARY KEY (authorID));")
 
+        self.cursor.execute("create table IF NOT EXISTS rfLabels ("
+                            "abstractID VARCHAR(64),"
+                            "labelinfo MEDIUMTEXT);")
+
     def add_abstract(self, abstract_id, title, authors, year, inCitations, outCitations):
         self.cursor.execute(f"SELECT EXISTS(SELECT * FROM abstracts WHERE abstractID='{abstract_id}');")
         result = self.cursor.fetchall()
@@ -73,6 +77,14 @@ class DBConnector:
             except:
                 title = "".join([x for x in title if x in string.printable])
                 self.cursor.execute(sq1, (abstract_id, title, author_ids, year, inCitations, outCitations))
+
+    def add_rflabel_info(self, abstract_id, labelinfo):
+        sq1 = "INSERT INTO rfLabels (abstractID, labelinfo) VALUES(%s, %s)"
+        try:
+            self.cursor.execute(sq1, (abstract_id, labelinfo))
+        except:
+            print("ERROR")
+            exit()
 
     def commit(self):
         self.connection.commit()
