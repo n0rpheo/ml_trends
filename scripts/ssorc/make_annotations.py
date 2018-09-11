@@ -4,6 +4,7 @@ import pickle
 
 from stanfordcorenlp import StanfordCoreNLP
 
+from src.utils.mysql import DBConnector
 from src.utils.LoopTimer import LoopTimer
 
 
@@ -35,6 +36,8 @@ def paragraph_splitter(split_abstract):
     return paras
 
 
+dbcon = DBConnector(db="ssorc")
+
 path_to_db = "/media/norpheo/mySQL/db/ssorc"
 path_to_annotations = os.path.join(path_to_db, "annotations")
 path_to_raw = os.path.join(path_to_db, "raw")
@@ -53,40 +56,48 @@ split_props = {'annotators': splitter_annotators, 'pipelineLanguage': 'en', 'out
 
 lc = LoopTimer(update_after=1)
 for idx, filename in enumerate(to_process_list):
-    lc.update("Annotate Abstract " + filename)
     with open(os.path.join(path_to_raw, filename + ".rawtxt")) as rawfile:
         abstract = rawfile.read()
 
-        paragraphs = paragraph_splitter(abstract)
+    paragraphs = paragraph_splitter(abstract)
 
-        last_id = 0
-        para_info = dict()
-        para_info['sentences'] = list()
-        for paragraph in paragraphs:
-            para_text = paragraph['paragraphContent']
-            para_title = paragraph['paragraphTitle']
-            para_anno = json.loads(nlp.annotate(para_text, properties=split_props))
+    last_id = 0
+    para_info = dict()
+    para_info['sentences'] = list()
+    for paragraph in paragraphs:
+        para_text = paragraph['paragraphContent']
+        para_title = paragraph['paragraphTitle']
+        para_anno = json.loads(nlp.annotate(para_text, properties=split_props))
 
-            number_of_sentences = len(para_anno['sentences'])
+        number_of_sentences = len(para_anno['sentences'])
 
-            for i in range(last_id, last_id + number_of_sentences):
-                infos = dict()
-                infos['label'] = para_title
-                infos['index'] = i
+        for i in range(last_id, last_id + number_of_sentences):
+            infos = dict()
+            infos['label'] = para_title
+            infos['index'] = i
 
-                para_info['sentences'].append(infos)
+            para_info['sentences'].append(infos)
 
-            last_id += number_of_sentences
+        last_id += number_of_sentences
 
-        para_info_text = json.dumps(para_info)
+    para_info_text = json.dumps(para_info)
 
-        new_abstract = " ".join([x['paragraphContent'] for x in paragraphs])
+    new_abstract = " ".join([x['paragraphContent'] for x in paragraphs])
 
-        annotation = nlp.annotate(new_abstract, properties=props)
+    annotation = nlp.annotate(new_abstract, properties=props)
 
-        data = json.loads(annotation)
+    data = json.loads(annotation)
 
-        with open(os.path.join(path_to_annotations, filename + ".antn"), "wb") as anno_file:
-            pickle.dump(data, anno_file, protocol=pickle.HIGHEST_PROTOCOL)
+    with open(os.path.join(path_to_annotations, filename + ".antn"), "wb") as anno_file:
+        pickle.dump(data, anno_file, protocol=pickle.HIGHEST_PROTOCOL)
+
+    dbcon.add_rflabel_info(filename, para_info_text)
+
+    if idx % 100 == 0:
+        dbcon.commit()
+
+    lc.update("Annotate Abstract " + filename)
+dbcon.commit()
+
 
 nlp.close()

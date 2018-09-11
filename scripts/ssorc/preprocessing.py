@@ -48,7 +48,3 @@ for filename in file_list[1:2]:
             if idx % 2000 == 0:
                 dbcon.commit()
     dbcon.commit()
-    print()
-    print()
-
-#dbcon.print_db()
