@@ -35,9 +35,11 @@ def paragraph_splitter(split_abstract):
             paragraph_title = ''
     return paras
 
-
+print("Connect to DB")
 dbcon = DBConnector(db="ssorc")
+print("Connected")
 
+print("Gather Information")
 path_to_db = "/media/norpheo/mySQL/db/ssorc"
 path_to_annotations = os.path.join(path_to_db, "annotations")
 path_to_raw = os.path.join(path_to_db, "raw")
@@ -56,6 +58,8 @@ split_props = {'annotators': splitter_annotators, 'pipelineLanguage': 'en', 'out
 
 lc = LoopTimer(update_after=1)
 for idx, filename in enumerate(to_process_list):
+    lc.update("Annotate Abstract " + filename)
+
     with open(os.path.join(path_to_raw, filename + ".rawtxt")) as rawfile:
         abstract = rawfile.read()
 
@@ -90,14 +94,10 @@ for idx, filename in enumerate(to_process_list):
 
     with open(os.path.join(path_to_annotations, filename + ".antn"), "wb") as anno_file:
         pickle.dump(data, anno_file, protocol=pickle.HIGHEST_PROTOCOL)
-
     dbcon.add_rflabel_info(filename, para_info_text)
+    dbcon.commit()
 
-    if idx % 100 == 0:
-        dbcon.commit()
-
-    lc.update("Annotate Abstract " + filename)
-dbcon.commit()
-
+    if idx == 20000:
+        break
 
 nlp.close()

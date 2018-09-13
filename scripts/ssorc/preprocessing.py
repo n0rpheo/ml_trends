@@ -16,7 +16,7 @@ dbcon = DBConnector(db="ssorc")
 raw_dir = '../../data/raw/ssorc'
 file_list = sorted([f for f in os.listdir(raw_dir) if os.path.isfile(os.path.join(raw_dir, f))])
 
-for filename in file_list[1:2]:
+for filename in file_list[2:4]:
     cur_path = os.path.join(raw_dir, filename)
 
     print(filename)
