@@ -2,6 +2,7 @@ import os
 import json
 import pickle
 
+import mysql.connector
 from stanfordcorenlp import StanfordCoreNLP
 
 from src.utils.mysql import DBConnector
@@ -35,20 +36,31 @@ def paragraph_splitter(split_abstract):
             paragraph_title = ''
     return paras
 
-print("Connect to DB")
-dbcon = DBConnector(db="ssorc")
-print("Connected")
 
-print("Gather Information")
+dbcon = DBConnector(db="ssorc")
 path_to_db = "/media/norpheo/mySQL/db/ssorc"
 path_to_annotations = os.path.join(path_to_db, "annotations")
 path_to_raw = os.path.join(path_to_db, "raw")
-raw_list = set([f[0:(len(f)-7)] for f in os.listdir(path_to_raw) if os.path.isfile(os.path.join(path_to_raw, f))])
-annotation_list = set([f[0:(len(f)-7)] for f in os.listdir(path_to_annotations)
-                       if os.path.isfile(os.path.join(path_to_annotations, f))])
-to_process_list = raw_list - annotation_list
 
-print("There are " + str(len(to_process_list)) + " files to process")
+connection = mysql.connector.connect(
+            host="localhost",
+            user="root",
+            passwd="thesis",
+        )
+
+cursor = connection.cursor()
+cursor.execute("USE ssorc;")
+cursor.execute("SELECT abstract_id FROM abstracts WHERE annotated=0")
+
+lc = LoopTimer(update_after=1000)
+abstracts_to_process = set()
+for idx, row in enumerate(cursor):
+    abstracts_to_process.add(row[0])
+    lc.update("Collect Abstracts to Process")
+connection.close()
+print()
+
+print("There are " + str(len(abstracts_to_process)) + " files to process")
 
 annotators = 'tokenize,ssplit,pos,lemma,depparse'
 splitter_annotators = 'ssplit'
@@ -57,10 +69,10 @@ props = {'annotators': annotators, 'pipelineLanguage': 'en', 'outputFormat': 'js
 split_props = {'annotators': splitter_annotators, 'pipelineLanguage': 'en', 'outputFormat': 'json'}
 
 lc = LoopTimer(update_after=1)
-for idx, filename in enumerate(to_process_list):
-    lc.update("Annotate Abstract " + filename)
+for idx, abstract_id in enumerate(abstracts_to_process):
+    lc.update("Annotate Abstract " + abstract_id)
 
-    with open(os.path.join(path_to_raw, filename + ".rawtxt")) as rawfile:
+    with open(os.path.join(path_to_raw, abstract_id + ".rawtxt")) as rawfile:
         abstract = rawfile.read()
 
     paragraphs = paragraph_splitter(abstract)
@@ -85,16 +97,15 @@ for idx, filename in enumerate(to_process_list):
         last_id += number_of_sentences
 
     para_info_text = json.dumps(para_info)
-
     new_abstract = " ".join([x['paragraphContent'] for x in paragraphs])
-
     annotation = nlp.annotate(new_abstract, properties=props)
-
     data = json.loads(annotation)
-
-    with open(os.path.join(path_to_annotations, filename + ".antn"), "wb") as anno_file:
+    with open(os.path.join(path_to_annotations, abstract_id + ".antn"), "wb") as anno_file:
         pickle.dump(data, anno_file, protocol=pickle.HIGHEST_PROTOCOL)
-    dbcon.add_rflabel_info(filename, para_info_text)
+
+    dbcon.add_rflabel_info(abstract_id, para_info_text)
+    dbcon.annotate(abstract_id)
+
     dbcon.commit()
 
     if idx == 20000:

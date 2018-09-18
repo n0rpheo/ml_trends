@@ -15,37 +15,11 @@ class DBConnector:
         if db is not None:
             self.cursor.execute(f"USE {db}")
 
-    def delete_db(self):
-        self.cursor.execute("DROP DATABASE ssorc")
-
-    def setup(self):
-        self.cursor.execute("CREATE DATABASE IF NOT EXISTS ssorc")
-        self.cursor.execute("USE ssorc")
-        self.cursor.execute("create table IF NOT EXISTS abstracts ("
-                            "abstractID VARCHAR(64),"
-                            "title TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,"
-                            "authorID TEXT,"
-                            "year INT,"
-                            "inCitations MEDIUMTEXT,"
-                            "outCitations MEDIUMTEXT,"
-                            "PRIMARY KEY (abstractID));")
-
-        self.cursor.execute("create table IF NOT EXISTS authors ("
-                            "authorID BIGINT UNSIGNED,"
-                            "author TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,"
-                            "PRIMARY KEY (authorID));")
-
-        self.cursor.execute("create table IF NOT EXISTS rfLabels ("
-                            "abstractID VARCHAR(64),"
-                            "labelinfo MEDIUMTEXT);")
-
     def add_abstract(self, abstract_id, title, authors, year, inCitations, outCitations):
-        self.cursor.execute(f"SELECT EXISTS(SELECT * FROM abstracts WHERE abstractID='{abstract_id}');")
+        self.cursor.execute(f"SELECT abstract_id FROM abstracts WHERE abstract_id='{abstract_id}';")
         result = self.cursor.fetchall()
 
-        if result[0][0] == 0:
-            title = bytes(title, 'utf-8').decode('utf-8', 'ignore')
-
+        if len(result) == 0:
             author_ids = []
             for author in authors:
                 author_name = author['name']
@@ -55,47 +29,43 @@ class DBConnector:
 
                 author_id = int(author['ids'][0])
 
-                self.cursor.execute(f"SELECT EXISTS(SELECT * FROM authors WHERE authorID={author_id});")
+                self.cursor.execute(f"SELECT abstract_ids FROM authors WHERE author_id={author_id};")
                 result = self.cursor.fetchall()
 
-                if result[0][0] == 0:
-                    sq1 = "INSERT INTO authors (authorID, author) VALUES(%s, %s)"
-                    try:
-                        self.cursor.execute(sq1, (author_id, author_name))
-                    except:
-                        author_name = "".join([x for x in author_name if x in string.printable])
-                        self.cursor.execute(sq1, (author_id, author_name))
+                if len(result) == 0:
+                    sq1 = "INSERT INTO authors (author_id, author, abstract_ids) VALUES(%s, %s, %s)"
+                    self.cursor.execute(sq1, (author_id, author_name, abstract_id))
+                else:
+                    abstract_ids = set(result[0][0].split(','))
+                    abstract_ids.add("6")
+                    abstract_ids = ",".join(abstract_ids)
+
+                    sq1 = "UPDATE authors SET abstract_ids=%s WHERE author_id=%s;"
+                    self.cursor.execute(sq1, (abstract_ids, author_id))
 
                 author_ids.append(author['ids'][0])
 
             author_ids = ",".join(author_ids)
 
-            sq1 = "INSERT INTO abstracts (abstractID, title, authorID, year, inCitations, outCitations) VALUES(%s, %s, %s, %s, %s, %s)"
-
             try:
+                sq1 = "INSERT INTO abstracts (abstract_id, title, author_ids, year, inCitations, outCitations) VALUES(%s, %s, %s, %s, %s, %s)"
                 self.cursor.execute(sq1, (abstract_id, title, author_ids, year, inCitations, outCitations))
-            except:
-                title = "".join([x for x in title if x in string.printable])
-                self.cursor.execute(sq1, (abstract_id, title, author_ids, year, inCitations, outCitations))
+            except Exception as err:
+                print("'" + title + "'")
+                print("Error {0}".format(err))
+                raise
 
     def add_rflabel_info(self, abstract_id, labelinfo):
-        sq1 = "INSERT INTO rfLabels (abstractID, labelinfo) VALUES(%s, %s)"
+        sq1 = "INSERT INTO rfLabels (abstract_id, labelinfo) VALUES(%s, %s)"
         try:
             self.cursor.execute(sq1, (abstract_id, labelinfo))
         except:
             print("ERROR")
             exit()
 
+    def annotate(self, abstract_id):
+        sq1 = f"UPDATE abstracts SET annotated=1 WHERE abstract_id='{abstract_id}';"
+        self.cursor.execute(sq1)
+
     def commit(self):
         self.connection.commit()
-
-    def print_db(self):
-        self.cursor.execute("SELECT * FROM abstracts")
-
-        for entry in self.cursor:
-            print(entry)
-
-        self.cursor.execute("SELECT * FROM authors")
-
-        for entry in self.cursor:
-            print(entry)

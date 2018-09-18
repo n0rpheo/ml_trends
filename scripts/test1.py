@@ -1,17 +1,28 @@
-import json
+import mysql.connector
 
-from stanfordcorenlp import StanfordCoreNLP
+connection = mysql.connector.connect(
+            host="localhost",
+            user="root",
+            passwd="thesis",
+        )
 
+cursor = connection.cursor()
+cursor.execute("USE test;")
 
-annotators = 'tokenize,ssplit,pos,lemma,depparse'
-nlp = StanfordCoreNLP('../stanford-corenlp-full-2018-02-27')
-props = {'annotators': annotators, 'pipelineLanguage': 'en', 'outputFormat': 'json'}
+title = "May-Ozerov Algorithm for Nearest-Neighbor Problem over 𝔽q and Its Application to Information Set Decoding"
+title = "Blockin        󹹾"
 
+title = bytes(title, 'latin1', 'ignore').decode('utf-8', 'ignore')
 
-text = "..."
-anno = nlp.annotate(text, properties=props)
-para_anno = json.loads(anno)
+print(title)
 
-print(para_anno)
+try:
+    sq1 = f"INSERT INTO testing (title) VALUES('{title}')"
+    cursor.execute(sq1)
+    connection.commit()
+except Exception as err:
+    print("'" + title + "'")
+    print("Error {0}".format(err))
+    raise
 
-nlp.close()
+connection.close()
