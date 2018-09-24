@@ -37,7 +37,7 @@ class DBConnector:
                     self.cursor.execute(sq1, (author_id, author_name, abstract_id))
                 else:
                     abstract_ids = set(result[0][0].split(','))
-                    abstract_ids.add("6")
+                    abstract_ids.add(abstract_id)
                     abstract_ids = ",".join(abstract_ids)
 
                     sq1 = "UPDATE authors SET abstract_ids=%s WHERE author_id=%s;"
@@ -51,7 +51,10 @@ class DBConnector:
                 sq1 = "INSERT INTO abstracts (abstract_id, title, author_ids, year, inCitations, outCitations) VALUES(%s, %s, %s, %s, %s, %s)"
                 self.cursor.execute(sq1, (abstract_id, title, author_ids, year, inCitations, outCitations))
             except Exception as err:
-                print("'" + title + "'")
+                print()
+                print("Original:  '" + title + "'")
+                title = bytes(title, 'latin1', 'ignore').decode('utf-8', 'ignore')
+                print("After:     '" + title + "'")
                 print("Error {0}".format(err))
                 raise
 

@@ -1,4 +1,5 @@
 import mysql.connector
+import pickle
 
 connection = mysql.connector.connect(
             host="localhost",
@@ -7,22 +8,20 @@ connection = mysql.connector.connect(
         )
 
 cursor = connection.cursor()
-cursor.execute("USE test;")
+cursor.execute("USE ssorc;")
 
 title = "May-Ozerov Algorithm for Nearest-Neighbor Problem over 𝔽q and Its Application to Information Set Decoding"
-title = "Blockin        󹹾"
+title = "Èöó×ô Blockinø× Óö ¹ööý Ëøùùùù× Óó Ððüý Ðù×øøö× Ûûøø ×øöó¹¹¾»»êë"
 
 title = bytes(title, 'latin1', 'ignore').decode('utf-8', 'ignore')
+title = bytes(title, 'latin1', 'ignore').decode('utf-8', 'ignore')
 
-print(title)
+sq1 = "SELECT abstract_id FROM abstracts WHERE annotated=1"
 
-try:
-    sq1 = f"INSERT INTO testing (title) VALUES('{title}')"
-    cursor.execute(sq1)
-    connection.commit()
-except Exception as err:
-    print("'" + title + "'")
-    print("Error {0}".format(err))
-    raise
+cursor.execute(sq1)
+
+result = cursor.fetchall()
+
+print(len(result))
 
 connection.close()

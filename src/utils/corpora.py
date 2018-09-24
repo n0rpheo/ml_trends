@@ -7,6 +7,57 @@ import src.utils.functions as utils
 from src.utils.LoopTimer import LoopTimer
 
 
+def nlp_to_doc_token(annotation, token_type):
+    sentences = annotation['sentences']
+
+
+    abs_list = list()
+
+    if token_type not in ['pos', 'word', 'lemma']:
+        print('wrong token_type')
+        exit()
+
+    for sentence in sentences:
+        pos_list = list()
+        token_list = list()
+
+        for token in sentence['tokens']:
+            pos_list.append(token['pos'])
+            # oText = token['originalText']
+            token_list.append(token[token_type])
+        token_cleaned, pos_cleaned = utils.posFilterString(token_list, pos_list)
+
+        abs_list.extend(token_cleaned)
+
+    return abs_list
+
+
+def nlp_to_doc_tokenbigrams(annotation, token_type):
+    sentences = annotation['sentences']
+
+    abs_list = list()
+
+    if token_type not in ['pos', 'word', 'lemma']:
+        print('wrong token_type')
+        exit()
+
+    for sentence in sentences:
+        pos_list = list()
+        token_list = list()
+
+        for token in sentence['tokens']:
+            pos_list.append(token['pos'])
+            # oText = token['originalText']
+            token_list.append(token[token_type])
+        token_cleaned, pos_cleaned = utils.posFilterString(token_list, pos_list)
+
+        token_cleaned = utils.makeBigrams(token_cleaned)
+
+        abs_list.extend(token_cleaned)
+
+    return abs_list
+
+
 class word_doc_stream(object):
     def __init__(self, dtype, print_status=False):
         self.print_status = print_status

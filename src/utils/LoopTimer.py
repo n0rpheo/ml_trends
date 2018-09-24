@@ -3,9 +3,12 @@ from collections import deque
 
 
 class LoopTimer:
-    def __init__(self, avg_length=10, update_after=10):
+    def __init__(self, avg_length=None, update_after=10):
         self.idx = 0
-        self.avg_length = avg_length
+        if avg_length is None:
+            self.avg_length = update_after
+        else:
+            self.avg_length = avg_length
         self.update_after = update_after
         self.avg_time = deque(self.avg_length * [float(0)], maxlen=self.avg_length)
         self.t = time()

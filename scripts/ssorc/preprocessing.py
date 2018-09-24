@@ -67,6 +67,7 @@ for filename in file_list[0:3]:
 
                         # remove all non-utf-8 characters
                         title = bytes(title, 'latin1', 'ignore').decode('utf-8', 'ignore')
+                        title = bytes(title, 'latin1', 'ignore').decode('utf-8', 'ignore')
 
                         dbcon.add_abstract(abstract_id, title, authors, year, in_cit, out_cit)
 

@@ -50,7 +50,7 @@ connection = mysql.connector.connect(
 
 cursor = connection.cursor()
 cursor.execute("USE ssorc;")
-cursor.execute("SELECT abstract_id FROM abstracts WHERE annotated=0")
+cursor.execute("SELECT abstract_id FROM abstracts WHERE annotated=0 and year>1990")
 
 lc = LoopTimer(update_after=1000)
 abstracts_to_process = set()
@@ -68,7 +68,7 @@ nlp = StanfordCoreNLP('../../stanford-corenlp-full-2018-02-27')
 props = {'annotators': annotators, 'pipelineLanguage': 'en', 'outputFormat': 'json'}
 split_props = {'annotators': splitter_annotators, 'pipelineLanguage': 'en', 'outputFormat': 'json'}
 
-lc = LoopTimer(update_after=1)
+lc = LoopTimer(update_after=1, avg_length=500)
 for idx, abstract_id in enumerate(abstracts_to_process):
     lc.update("Annotate Abstract " + abstract_id)
 
@@ -80,12 +80,22 @@ for idx, abstract_id in enumerate(abstracts_to_process):
     last_id = 0
     para_info = dict()
     para_info['sentences'] = list()
+
+    para_sentence_count = 0
+    paras = list()
+
     for paragraph in paragraphs:
         para_text = paragraph['paragraphContent']
         para_title = paragraph['paragraphTitle']
+
+        if len(para_text) >= 100000:
+            break
+
         para_anno = json.loads(nlp.annotate(para_text, properties=split_props))
+        paras.append(para_anno)
 
         number_of_sentences = len(para_anno['sentences'])
+        para_sentence_count += number_of_sentences
 
         for i in range(last_id, last_id + number_of_sentences):
             infos = dict()
@@ -98,17 +108,32 @@ for idx, abstract_id in enumerate(abstracts_to_process):
 
     para_info_text = json.dumps(para_info)
     new_abstract = " ".join([x['paragraphContent'] for x in paragraphs])
+
+    if len(new_abstract) >= 100000:
+        continue
+
     annotation = nlp.annotate(new_abstract, properties=props)
     data = json.loads(annotation)
-    with open(os.path.join(path_to_annotations, abstract_id + ".antn"), "wb") as anno_file:
-        pickle.dump(data, anno_file, protocol=pickle.HIGHEST_PROTOCOL)
 
-    dbcon.add_rflabel_info(abstract_id, para_info_text)
-    dbcon.annotate(abstract_id)
+    all_sentence_count = len(data['sentences'])
 
-    dbcon.commit()
+    original = " ".join(
+        [" ".join(
+            [token['originalText'] for token in sentence['tokens']])
+            for sentence in data['sentences']])
+    paragraphed = " ".join(
+        [" ".join(
+            [" ".join(
+                [token['originalText'] for token in sentence['tokens']])
+                for sentence in paragraph['sentences']])
+            for paragraph in paras])
 
-    if idx == 20000:
-        break
+    if all_sentence_count == para_sentence_count and original == paragraphed:
+        with open(os.path.join(path_to_annotations, abstract_id + ".antn"), "wb") as anno_file:
+            pickle.dump(data, anno_file, protocol=pickle.HIGHEST_PROTOCOL)
+        dbcon.add_rflabel_info(abstract_id, para_info_text)
+        dbcon.annotate(abstract_id)
+
+        dbcon.commit()
 
 nlp.close()
