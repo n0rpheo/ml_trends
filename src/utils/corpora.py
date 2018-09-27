@@ -1,5 +1,7 @@
 import os
 import json
+import pickle
+import mysql.connector
 
 import src.features.make_features as mf
 import src.utils.functions as utils
@@ -9,8 +11,6 @@ from src.utils.LoopTimer import LoopTimer
 
 def nlp_to_doc_token(annotation, token_type):
     sentences = annotation['sentences']
-
-
     abs_list = list()
 
     if token_type not in ['pos', 'word', 'lemma']:
@@ -34,7 +34,6 @@ def nlp_to_doc_token(annotation, token_type):
 
 def nlp_to_doc_tokenbigrams(annotation, token_type):
     sentences = annotation['sentences']
-
     abs_list = list()
 
     if token_type not in ['pos', 'word', 'lemma']:
@@ -56,6 +55,52 @@ def nlp_to_doc_tokenbigrams(annotation, token_type):
         abs_list.extend(token_cleaned)
 
     return abs_list
+
+
+class TokenDocStream(object):
+    def __init__(self, token_type, limit=None, print_status=False):
+        self.print_status = print_status
+        self.token_type = token_type
+        self.path_to_annotations = '/media/norpheo/mySQL/db/ssorc/annotations'
+
+        connection = mysql.connector.connect(
+            host="localhost",
+            user="root",
+            passwd="thesis",
+        )
+
+        cursor = connection.cursor()
+        cursor.execute("USE ssorc;")
+        if limit is None:
+            sq1 = "SELECT abstract_id FROM abstracts WHERE annotated=1 and dictionaried=1"
+        else:
+            sq1 = f"SELECT abstract_id FROM abstracts WHERE annotated=1 and dictionaried=1 LIMIT {limit}"
+        cursor.execute(sq1)
+
+        lc = LoopTimer(update_after=1000)
+        self.abstracts = set()
+        for idx, row in enumerate(cursor):
+            self.abstracts.add(row[0])
+            lc.update("Collect Abstracts to Process")
+        connection.close()
+        print()
+
+    def __iter__(self):
+        lc = LoopTimer(update_after=1, avg_length=1000)
+        for abstract_id in self.abstracts:
+            path_to_annotation_file = os.path.join(self.path_to_annotations, abstract_id + ".antn")
+            if not os.path.isfile(path_to_annotation_file):
+                print()
+                print(abstract_id + " in db but missing file.")
+                print()
+                continue
+
+            with open(path_to_annotation_file, "rb") as annotation_file:
+                annotation = pickle.load(annotation_file)
+            document = nlp_to_doc_token(annotation, self.token_type)
+            if self.print_status:
+                lc.update("Yield Abstract")
+            yield document
 
 
 class word_doc_stream(object):

@@ -64,7 +64,7 @@ print("There are " + str(len(abstracts_to_process)) + " files to process")
 
 annotators = 'tokenize,ssplit,pos,lemma,depparse'
 splitter_annotators = 'ssplit'
-nlp = StanfordCoreNLP('../../stanford-corenlp-full-2018-02-27')
+nlp = StanfordCoreNLP('../../../stanford-corenlp-full-2018-02-27')
 props = {'annotators': annotators, 'pipelineLanguage': 'en', 'outputFormat': 'json'}
 split_props = {'annotators': splitter_annotators, 'pipelineLanguage': 'en', 'outputFormat': 'json'}
 

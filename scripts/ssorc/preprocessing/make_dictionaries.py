@@ -73,7 +73,7 @@ for row in abstracts_to_process:
         else:
             tokens = nlp_to_doc_token(annotation, token_type=dictionary)
 
-        dictionaries[dictionary].add_documents([tokens], prune_at=20000000)
+        dictionaries[dictionary].add_documents([tokens], prune_at=None)
 
     sq1 = f"UPDATE abstracts SET dictionaried=1 WHERE abstract_id='{abstract_id}';"
     cursor.execute(sq1)
@@ -82,6 +82,8 @@ for row in abstracts_to_process:
 
     if a_list:
         break
+
+print("Building has finished. Saving and Committing.")
 
 connection.commit()
 

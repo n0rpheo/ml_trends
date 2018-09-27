@@ -1,12 +1,23 @@
+import os
 import matplotlib.pyplot as plt
 import operator
+import scipy.sparse
+import gensim
 from src.modules.topic_modeling import TopicModeling
 
-topic_modeler = TopicModeling('ssorc')
-topic_modeler.load_model(model_name="lda_500_topics.model")
-topic_modeler.load_corpus(prefix='lemma_10k')
+path_to_db = "/media/norpheo/mySQL/db/ssorc"
+feature_file_path = os.path.join(path_to_db, 'features', 'tm_features.npz')
 
-corpus_lda = topic_modeler.lda_model[topic_modeler.corpus_tfidf]
+print('Initialize Model')
+tm = TopicModeling(dictionary_name='full_word.dict',
+                   tfidf_name='word_model.tfidf',
+                   model_name='tm_lda.model')
+
+print('Load Features')
+tm_features = scipy.sparse.load_npz(feature_file_path)
+corpus_tfidf = gensim.matutils.Sparse2Corpus(tm_features.transpose())
+corpus_lda = tm.lda_model[corpus_tfidf]
+
 topic_counter = dict()
 for idx, doc_lda in enumerate(corpus_lda):
     max_p = 0

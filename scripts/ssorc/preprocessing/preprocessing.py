@@ -11,7 +11,7 @@ path_to_db = "/media/norpheo/mySQL/db/ssorc/raw"
 
 dbcon = DBConnector(db="ssorc")
 
-raw_dir = '../../data/raw/ssorc'
+raw_dir = '../../../data/raw/ssorc'
 file_list = sorted([f for f in os.listdir(raw_dir) if os.path.isfile(os.path.join(raw_dir, f))])
 
 connection = mysql.connector.connect(
