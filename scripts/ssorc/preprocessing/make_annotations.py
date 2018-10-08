@@ -121,6 +121,7 @@ for idx, abstract_id in enumerate(abstracts_to_process):
         [" ".join(
             [token['originalText'] for token in sentence['tokens']])
             for sentence in data['sentences']])
+
     paragraphed = " ".join(
         [" ".join(
             [" ".join(

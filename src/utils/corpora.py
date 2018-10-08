@@ -9,13 +9,9 @@ import src.utils.functions as utils
 from src.utils.LoopTimer import LoopTimer
 
 
-def nlp_to_doc_token(annotation, token_type):
+def nlp_to_doc_token(annotation, token_type, clean=True):
     sentences = annotation['sentences']
     abs_list = list()
-
-    if token_type not in ['pos', 'word', 'lemma']:
-        print('wrong token_type')
-        exit()
 
     for sentence in sentences:
         pos_list = list()
@@ -25,20 +21,20 @@ def nlp_to_doc_token(annotation, token_type):
             pos_list.append(token['pos'])
             # oText = token['originalText']
             token_list.append(token[token_type])
-        token_cleaned, pos_cleaned = utils.posFilterString(token_list, pos_list)
+
+        if clean:
+            token_cleaned, pos_cleaned = utils.posFilterString(token_list, pos_list)
+        else:
+            token_cleaned = token_list
 
         abs_list.extend(token_cleaned)
 
     return abs_list
 
 
-def nlp_to_doc_tokenbigrams(annotation, token_type):
+def nlp_to_doc_tokenbigrams(annotation, token_type, clean=True):
     sentences = annotation['sentences']
     abs_list = list()
-
-    if token_type not in ['pos', 'word', 'lemma']:
-        print('wrong token_type')
-        exit()
 
     for sentence in sentences:
         pos_list = list()
@@ -48,7 +44,11 @@ def nlp_to_doc_tokenbigrams(annotation, token_type):
             pos_list.append(token['pos'])
             # oText = token['originalText']
             token_list.append(token[token_type])
-        token_cleaned, pos_cleaned = utils.posFilterString(token_list, pos_list)
+
+        if clean:
+            token_cleaned, pos_cleaned = utils.posFilterString(token_list, pos_list)
+        else:
+            token_cleaned = token_list
 
         token_cleaned = utils.makeBigrams(token_cleaned)
 
@@ -58,35 +58,21 @@ def nlp_to_doc_tokenbigrams(annotation, token_type):
 
 
 class TokenDocStream(object):
-    def __init__(self, token_type, limit=None, print_status=False):
+    def __init__(self, abstracts, token_type, print_status=False, token_cleaned=True):
         self.print_status = print_status
         self.token_type = token_type
+        self.token_cleaned = token_cleaned
+        self.abstracts = abstracts
+        self.limit = len(abstracts)
         self.path_to_annotations = '/media/norpheo/mySQL/db/ssorc/annotations'
 
-        connection = mysql.connector.connect(
-            host="localhost",
-            user="root",
-            passwd="thesis",
-        )
-
-        cursor = connection.cursor()
-        cursor.execute("USE ssorc;")
-        if limit is None:
-            sq1 = "SELECT abstract_id FROM abstracts WHERE annotated=1 and dictionaried=1"
-        else:
-            sq1 = f"SELECT abstract_id FROM abstracts WHERE annotated=1 and dictionaried=1 LIMIT {limit}"
-        cursor.execute(sq1)
-
-        lc = LoopTimer(update_after=1000)
-        self.abstracts = set()
-        for idx, row in enumerate(cursor):
-            self.abstracts.add(row[0])
-            lc.update("Collect Abstracts to Process")
-        connection.close()
-        print()
+        if print_status:
+            print(f"Number of Docs: {self.limit}")
+            print()
 
     def __iter__(self):
-        lc = LoopTimer(update_after=1, avg_length=1000)
+        lc = LoopTimer(update_after=1, avg_length=100, target=self.limit)
+
         for abstract_id in self.abstracts:
             path_to_annotation_file = os.path.join(self.path_to_annotations, abstract_id + ".antn")
             if not os.path.isfile(path_to_annotation_file):
@@ -97,10 +83,10 @@ class TokenDocStream(object):
 
             with open(path_to_annotation_file, "rb") as annotation_file:
                 annotation = pickle.load(annotation_file)
-            document = nlp_to_doc_token(annotation, self.token_type)
+            document = nlp_to_doc_token(annotation, self.token_type, clean=self.token_cleaned)
             if self.print_status:
                 lc.update("Yield Abstract")
-            yield document
+            yield abstract_id, document
 
 
 class word_doc_stream(object):
