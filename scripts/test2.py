@@ -1,3 +1,5 @@
-import nltk
+def test():
+    print('test')
 
-nltk.download('punkt')
+
+test()

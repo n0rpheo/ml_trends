@@ -29,6 +29,8 @@ lda_model = gensim.models.LdaMulticore(corpus=corpus_tfidf,
                                        eval_every=update_every,
                                        passes=passes,
                                        workers=5)
+
+
 print('Model Trained.')
 model_path = os.path.join(path_to_models, model_name)
 lda_model.save(model_path)

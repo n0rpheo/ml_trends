@@ -46,20 +46,21 @@ sq1 = "SELECT abstract_id FROM abstracts WHERE annotated=1 and dictionaried=1"
 cursor.execute(sq1)
 
 abstracts = set()
-lc = LoopTimer(update_after=1000, avg_length=20000)
+lc = LoopTimer(update_after=10000, avg_length=200000)
 for row in cursor:
     abstracts.add(row[0])
     lc.update("Collecting")
 connection.close()
 
 abstracts = abstracts.difference(skip_list)
-abstracts = set(list(abstracts)[:1])
+abstracts = set(list(abstracts)[:2000])
 
 docstream = TokenDocStream(token_type="originalText",
                            abstracts=abstracts,
                            token_cleaned=False,
-                           print_status=True)
-
+                           print_status=True,
+                           output='all')
+print()
 for doc in docstream:
     abstract_id = doc[0]
     abstract = doc[1]

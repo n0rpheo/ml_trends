@@ -8,17 +8,18 @@ import mysql.connector
 import src.utils.corpora as corpora
 from src.utils.LoopTimer import LoopTimer
 
-feature_file_name = 'tm_features'
+feature_file_name = 'lr_MLclassifier_bow_features'
 token_type = 'word'
-num_samples = 1000
 
 path_to_db = "/media/norpheo/mySQL/db/ssorc"
 path_to_dictionaries = os.path.join(path_to_db, "dictionaries")
 path_to_annotations = os.path.join(path_to_db, 'annotations')
 path_to_models = os.path.join(path_to_db, 'models')
-path_to_feature_file = os.path.join(path_to_db, 'features', feature_file_name + '.npz')
 dic_path = os.path.join(path_to_dictionaries, "full_" + token_type + ".dict")
 tfidf_path = os.path.join(path_to_models, token_type + "_model.tfidf")
+
+path_to_feature_file = os.path.join(path_to_db, 'features', feature_file_name + '.npz')
+path_to_target_file = os.path.join(path_to_db, 'features', feature_file_name + '_targets.npy')
 
 print('Load Dictionary')
 dictionary = gensim.corpora.Dictionary.load(dic_path)
@@ -33,24 +34,35 @@ connection = mysql.connector.connect(
 
 cursor = connection.cursor()
 cursor.execute("USE ssorc;")
-sq1 = f"SELECT abstract_id FROM abstracts WHERE annotated=1 and dictionaried=1 LIMIT {num_samples}"
+sq1 = f"SELECT abstract_id, label FROM ml_topics_training"
 cursor.execute(sq1)
 
 abstracts = set()
-for row in cursor:
-    abstracts.add(row[0])
+abstract_labels = dict()
+for idx, row in enumerate(cursor):
+    abstract_id = row[0]
+    abstract_label = row[1]
+
+    abstracts.add(abstract_id)
+    abstract_labels[abstract_id] = abstract_label
 connection.close()
 
-corpus = corpora.TokenDocStream(token_type, abstracts=abstracts, print_status=True, output='all')
+corpus = corpora.TokenDocStream(abstracts=abstracts, token_type=token_type, print_status=True, output='all')
 row = []
 col = []
 data = []
 lt = LoopTimer()
-for idx, document in enumerate(corpus):
-    if num_samples != -1 and idx == num_samples:
-        break
 
-    bow = dictionary.doc2bow(document[1])
+labels = list()
+
+for idx, document in enumerate(corpus):
+    words = document[1]
+    abstract_id = document[0]
+
+    label = abstract_labels[abstract_id]
+    labels.append(label)
+
+    bow = dictionary.doc2bow(words)
     vec_tfidf = tfidf[bow]
 
     for entry in vec_tfidf:
@@ -66,5 +78,11 @@ row = np.array(row)
 col = np.array(col)
 data = np.array(data)
 
+labels = np.array(labels)
 feature_vector = scipy.sparse.csc_matrix((data, (row, col)), shape=(m, n))
+
+print(feature_vector.shape)
+print(labels.shape)
+
 scipy.sparse.save_npz(path_to_feature_file, feature_vector)
+np.save(path_to_target_file, labels)
