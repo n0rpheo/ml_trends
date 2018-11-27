@@ -2,18 +2,17 @@ import os
 import gensim
 import scipy.sparse
 
-token_type = 'word'
-prefix = 'lemma'
-num_topics = 100
+token_type = 'lemma'
+num_topics = 20
 update_every = 1
 passes = 1
-model_name = "tm_lda.model"
+model_name = "tm_lda_lemma.model"
 
 path_to_db = "/media/norpheo/mySQL/db/ssorc"
 path_to_models = os.path.join(path_to_db, 'models')
 path_to_dictionaries = os.path.join(path_to_db, 'dictionaries')
 dic_path = os.path.join(path_to_dictionaries, "full_" + token_type + ".dict")
-feature_file_path = os.path.join(path_to_db, 'features', 'tm_features.npz')
+feature_file_path = os.path.join(path_to_db, 'features', 'tm_lemma_features.npz')
 
 print('Load Dictionary')
 dictionary = gensim.corpora.Dictionary.load(dic_path)

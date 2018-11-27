@@ -3,20 +3,21 @@ import matplotlib.pyplot as plt
 import operator
 import scipy.sparse
 import gensim
-from src.modules.topic_modeling import TopicModeling
+
+
+model_name = 'tm_lda_lemma.model'
 
 path_to_db = "/media/norpheo/mySQL/db/ssorc"
-feature_file_path = os.path.join(path_to_db, 'features', 'tm_features.npz')
+path_to_feature_file = os.path.join(path_to_db, 'features', 'tm_lemma_features.npz')
+path_to_lda_model = os.path.join(path_to_db, 'models', model_name)
 
 print('Initialize Model')
-tm = TopicModeling(dictionary_name='full_word.dict',
-                   tfidf_name='word_model.tfidf',
-                   model_name='tm_lda.model')
-
+lda_model = gensim.models.LdaMulticore.load(path_to_lda_model)
 print('Load Features')
-tm_features = scipy.sparse.load_npz(feature_file_path)
+tm_features = scipy.sparse.load_npz(path_to_feature_file)
+
 corpus_tfidf = gensim.matutils.Sparse2Corpus(tm_features.transpose())
-corpus_lda = tm.lda_model[corpus_tfidf]
+corpus_lda = lda_model[corpus_tfidf]
 
 topic_counter = dict()
 for idx, doc_lda in enumerate(corpus_lda):

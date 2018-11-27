@@ -5,9 +5,10 @@ from gensim.models import Word2Vec
 
 from src.utils.corpora import TokenSentenceStream
 
+w2v_model_name = 'word2vec_isML.model'
 
 path_to_db = "/media/norpheo/mySQL/db/ssorc"
-path_to_word2vec_model = os.path.join(path_to_db, 'models', 'word2vec.model')
+path_to_word2vec_model = os.path.join(path_to_db, 'models', w2v_model_name)
 
 # define training data
 connection = mysql.connector.connect(
@@ -18,7 +19,8 @@ connection = mysql.connector.connect(
 
 cursor = connection.cursor()
 cursor.execute("USE ssorc;")
-sq1 = f"SELECT abstract_id FROM abstracts WHERE annotated=1 AND dictionaried=1 LIMIT 100000"
+#sq1 = f"SELECT abstract_id FROM abstracts WHERE annotated=1 AND dictionaried=1 LIMIT 100000"
+sq1 = f"SELECT abstract_id FROM mlabstracts"
 cursor.execute(sq1)
 
 abstracts = set()
@@ -27,7 +29,7 @@ for row in cursor:
     abstracts.add(abstract_id)
 connection.close()
 
-sentences = TokenSentenceStream(abstracts=abstracts, token_type='word', print_status=True)
+sentences = TokenSentenceStream(abstracts=abstracts, token_type='word', print_status=True, lower=True)
 
 # train model
 print("Train Model")

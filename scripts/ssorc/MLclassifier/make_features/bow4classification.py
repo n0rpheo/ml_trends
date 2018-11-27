@@ -8,18 +8,17 @@ import mysql.connector
 import src.utils.corpora as corpora
 from src.utils.LoopTimer import LoopTimer
 
-feature_file_name = 'lr_MLclassifier_bow_features'
-token_type = 'word'
+feature_file_name = 'mlc_bow_clfdata'
+
+dic_file_name = "pruned_originalText_potML.dict"
+tfidf_file_name = "pruned_oT_potML.tfidf"
+token_type = 'originalText'
 
 path_to_db = "/media/norpheo/mySQL/db/ssorc"
-path_to_dictionaries = os.path.join(path_to_db, "dictionaries")
-path_to_annotations = os.path.join(path_to_db, 'annotations')
-path_to_models = os.path.join(path_to_db, 'models')
-dic_path = os.path.join(path_to_dictionaries, "full_" + token_type + ".dict")
-tfidf_path = os.path.join(path_to_models, token_type + "_model.tfidf")
+dic_path = os.path.join(path_to_db, "dictionaries", dic_file_name)
+tfidf_path = os.path.join(path_to_db, "models", tfidf_file_name)
 
-path_to_feature_file = os.path.join(path_to_db, 'features', feature_file_name + '.npz')
-path_to_target_file = os.path.join(path_to_db, 'features', feature_file_name + '_targets.npy')
+path_to_feature_file = os.path.join(path_to_db, 'features', f"{feature_file_name}.npz")
 
 print('Load Dictionary')
 dictionary = gensim.corpora.Dictionary.load(dic_path)
@@ -34,17 +33,14 @@ connection = mysql.connector.connect(
 
 cursor = connection.cursor()
 cursor.execute("USE ssorc;")
-sq1 = f"SELECT abstract_id, label FROM ml_topics_training"
+sq1 = f"SELECT abstract_id FROM mlabstracts"
 cursor.execute(sq1)
 
 abstracts = set()
-abstract_labels = dict()
 for idx, row in enumerate(cursor):
     abstract_id = row[0]
-    abstract_label = row[1]
 
     abstracts.add(abstract_id)
-    abstract_labels[abstract_id] = abstract_label
 connection.close()
 
 corpus = corpora.TokenDocStream(abstracts=abstracts, token_type=token_type, print_status=True, output='all')
@@ -53,14 +49,9 @@ col = []
 data = []
 lt = LoopTimer()
 
-labels = list()
-
 for idx, document in enumerate(corpus):
     words = document[1]
     abstract_id = document[0]
-
-    label = abstract_labels[abstract_id]
-    labels.append(label)
 
     bow = dictionary.doc2bow(words)
     vec_tfidf = tfidf[bow]
@@ -78,11 +69,8 @@ row = np.array(row)
 col = np.array(col)
 data = np.array(data)
 
-labels = np.array(labels)
 feature_vector = scipy.sparse.csc_matrix((data, (row, col)), shape=(m, n))
 
 print(feature_vector.shape)
-print(labels.shape)
 
 scipy.sparse.save_npz(path_to_feature_file, feature_vector)
-np.save(path_to_target_file, labels)

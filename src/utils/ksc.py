@@ -4,14 +4,14 @@ import numpy as np
 from src.utils.LoopTimer import LoopTimer
 
 class ksc:
-    def __init__(self, max_iter = 1000):
+    def __init__(self, max_iter=1000):
         self.max_iter = max_iter
         self.k = 0
         self.n = 0
         self.dim = 0
 
-    def train(self, xs, init_mu):
-        self.k = len(init_mu)
+    def train(self, xs, mu):
+        self.k = len(mu)
         self.n = len(xs)
         self.dim = xs[0].shape[0]
 
@@ -20,11 +20,11 @@ class ksc:
         for j in range(0, self.k):
             clusters[j] = set()
 
-        self.assign_clusters(init_mu, xs, clusters)
+        self.assign_clusters(mu, xs, clusters)
 
         lc = LoopTimer(update_after=1)
 
-        for iter in range(0, self.max_iter):
+        for iteration in range(0, self.max_iter):
             old_clusters = dict()
 
             for j in range(0, self.k):

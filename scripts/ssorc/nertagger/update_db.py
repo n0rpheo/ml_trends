@@ -5,7 +5,7 @@ import mysql.connector
 from src.utils.LoopTimer import LoopTimer
 
 path_to_ner = "/media/norpheo/mySQL/db/ssorc/NER"
-path_to_ml_algo_abstract_save = os.path.join(path_to_ner, "ml_algo_abstract.pickle")
+path_to_ml_algo_abstract_save = os.path.join(path_to_ner, "ml_algo_abstract_new.pickle")
 
 
 with open(path_to_ml_algo_abstract_save, "rb") as algo_abstract_file:

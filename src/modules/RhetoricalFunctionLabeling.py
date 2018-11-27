@@ -1,43 +1,44 @@
 import operator
 import os
 import json
+import networkx as nx
+import pickle
+from networkx.drawing.nx_agraph import graphviz_layout
+import matplotlib.pyplot as plt
 
-import xml.etree.ElementTree as ET
-import igraph
-
-from src.utils.corpora import xml_para_stream
+from src.utils.corpora import AnnotationStream
 from src.utils.LoopTimer import LoopTimer
 from src.utils import sequence_matching
 
 
 class PatternMatching:
-    def __init__(self, dtype):
-        self.dtype = dtype
+    def __init__(self, dep_type):
+        self.dep_type = dep_type
 
-        dirname = os.path.dirname(__file__)
-        self.pattern_matching_dir = os.path.join(dirname, '../../data/processed/' + self.dtype + '/pattern_matching')
-
-        self.xml_corpus = xml_para_stream(dtype=dtype)
+        self.pattern_matching_dir = '/media/norpheo/mySQL/db/ssorc/pattern_matching'
 
         self.dep_tree_dict = dict()
         self.word_dictionary = Dictionary()
 
+        self.rules = None
         self.rules_converted = None
 
-    def build_dep_tree_dict(self, size=10000):
-        lc = LoopTimer()
-        for para_count, (doc_id, para_id, xml_string) in enumerate(self.xml_corpus):
-            root = ET.fromstring(xml_string)
-            for sentence in root.iter('sentence'):
-                s_id = sentence.attrib['id']
-                dep_tree = sentence2tree(sentence, self.word_dictionary)
+    def build_dep_tree_dict(self, abstracts):
+
+        size = len(abstracts)
+
+        annotations = AnnotationStream(abstracts=abstracts, output='all')
+
+        lc = LoopTimer(update_after=10, avg_length=200, target=size)
+        for abstract_id, annotation in annotations:
+            for sentence in annotation['sentences']:
+                dep_tree = sentence2tree(sentence, dictionary=self.word_dictionary, dep_type_=self.dep_type)
+                sentence_id = int(sentence['index'])
                 if dep_tree is not None:
-                    self.dep_tree_dict[(doc_id, para_id, s_id)] = dep_tree
+                    self.dep_tree_dict[(abstract_id, sentence_id)] = dep_tree
             lc.update("Build Dep Tree Dict")
-            if para_count == size:
-                break
         print()
-        print(len(self.word_dictionary.id2token))
+        print(f"Size of Dictionary: {len(self.word_dictionary.id2token)}")
 
     def convert_rules(self, convert_to):
         if self.rules_converted == "text" and convert_to == "id":
@@ -69,9 +70,13 @@ class PatternMatching:
                         new_rules[category].add(new_rule)
             self.rules = new_rules
 
-    def learning(self, category, iterations=3):
+    def learning(self, iterations=3):
         self.convert_rules("id")
+        for category in self.rules:
+            self.learn_category(category=category, iterations=iterations)
 
+    def learn_category(self, category, iterations=3):
+        print(f"Learning {category}")
         learn_rules = self.rules[category]
         for it in range(0, iterations):
             print("Iteration " + str(it+1) + ": " + str(len(self.rules[category])) + " Rules")
@@ -90,9 +95,9 @@ class PatternMatching:
 
     def findphrasesbyrules(self, rf_rules):
         phrases = []
-        lc = LoopTimer(update_after=1000)
-        for sent_count, (doc_id, para_id, sent_id) in enumerate(self.dep_tree_dict):
-            dep_tree = self.dep_tree_dict[(doc_id, para_id, sent_id)]
+        lc = LoopTimer(update_after=5000, avg_length=10000, target=len(self.dep_tree_dict))
+        for abstract_id, sentence_id in self.dep_tree_dict:
+            dep_tree = self.dep_tree_dict[(abstract_id, sentence_id)]
 
             for rule in rf_rules:
                 phrases.extend(get_phrases(dep_tree, rule))
@@ -112,20 +117,19 @@ class PatternMatching:
         # rule_phrase_count[Rule][Patter-ID] = Count
         rule_phrase_count = dict()
 
-        lc = LoopTimer(update_after=1000)
-        for sent_count, (doc_id, para_id, sent_id) in enumerate(self.dep_tree_dict):
-            dep_tree = self.dep_tree_dict[(doc_id, para_id, sent_id)]
+        lc = LoopTimer(update_after=1000, avg_length=5000, target=len(self.dep_tree_dict))
+        for abstract_id, sentence_id in self.dep_tree_dict:
+            dep_tree = self.dep_tree_dict[(abstract_id, sentence_id)]
 
-            token_idxs = []
+            token_idxs = list()
+            tokens = list()
 
-            for vertex in dep_tree.vs:
-                token_idxs.append(vertex.index)
+            for vertex in dep_tree.nodes.data():
+                token_idxs.append(vertex[0])
+                tokens.append(vertex[1]['token'])
 
             token_idxs.pop(0)  # remove Root
-
-            token_idxs = sorted(token_idxs)
-
-            tokens = [dep_tree.vs[t_id]['token'] for t_id in token_idxs]
+            tokens.pop(0)
 
             for phrase_id, search_phrase in enumerate(search_phrases):
 
@@ -140,22 +144,26 @@ class PatternMatching:
                     for result in results:
                         result_ids = [i for i in range(result + 1, result + 1 + len(search_phrase))]
 
-                        in_edges = dep_tree.incident(result+1, mode='IN')
+                        in_edge = dep_tree.in_edges(result+1)
 
-                        in_edge = dep_tree.es[in_edges[0]]
+                        for v in in_edge:
+                            source = v[0]
+                            target = v[1]
 
-                        while in_edge.source in result_ids:
-                            in_edges = dep_tree.incident(in_edge.source, mode='IN')
-                            in_edge = dep_tree.es[in_edges[0]]
+                        while source in result_ids:
+                            in_edge = dep_tree.in_edges(source)
+                            for v in in_edge:
+                                source = v[0]
+                                target = v[1]
 
-                        trigger_vertex = dep_tree.vs[in_edge.source]
+                        trigger_vertex = dep_tree.nodes.data()[source]
                         trigger_token = trigger_vertex['token']
 
-                        dependency = in_edge['dependency']
+                        dependency = dep_tree.edges[source, target]['dependency']
 
                         rule = (trigger_token, dependency)
 
-                        if rule not in self.rules[category]:
+                        if dependency != "ROOT" and rule not in self.rules[category]:
                             rule_phrase = (rule, phrase_id)
                             if rule_phrase not in rule_phrase_count:
                                 rule_phrase_count[rule_phrase] = 1
@@ -262,6 +270,18 @@ class PatternMatching:
 
                     rule_file.write(json_string + '\n')
 
+    def save_dep_tree(self, filename):
+        file_path = os.path.join(self.pattern_matching_dir, filename)
+
+        with open(file_path, 'wb') as dt_file:
+            pickle.dump(self.dep_tree_dict, dt_file, protocol=pickle.HIGHEST_PROTOCOL)
+
+    def load_dep_tree(self, filename):
+        file_path = os.path.join(self.pattern_matching_dir, filename)
+
+        with open(file_path, "rb") as dt_file:
+            self.dep_tree_dict = pickle.load(dt_file)
+
 
 class Dictionary:
     def __init__(self):
@@ -278,112 +298,55 @@ class Dictionary:
         return token_id
 
 
-def sentence2tree(sentence, dictionary=None, dep_type='collapsed-dependencies'):
-    tree = igraph.Graph(directed=True)
+def sentence2tree(sentence_, dictionary=None, dep_type_='basicDependencies'):
+    graph = nx.DiGraph()
 
-    tree.add_vertex()
-    tree.vs[0]['token'] = 'ROOT'
+    graph.add_node(0, token='ROOT')
 
-    for idx, token in enumerate(sentence.iter('token')):
-
+    for idx, token in enumerate(sentence_['tokens']):
         if dictionary is None:
-            token_content = token.find('word').text.lower()
+            token_content = token['word'].lower()
         else:
-            token_content = dictionary.add(token.find('word').text.lower())
-        tree.add_vertex(token=token_content)
+            token_content = dictionary.add(token['word'].lower())
+        graph.add_node(idx+1, token=token_content)
 
-    for dependencies in sentence.iter('dependencies'):
-        if dependencies.attrib['type'] == dep_type:
-            for edge_id, dep in enumerate(dependencies.iter('dep')):
-                dependency = dep.attrib['type']
+    for dep in sentence_[dep_type_]:
+        dependency = dep['dep']
+        dep_idx = int(dep['dependent'])
+        dep_word = dep['dependentGloss']
+        gov_idx = int(dep['governor'])
+        gov_word = dep['governorGloss']
 
-                dep_idx = int(dep.find('dependent').attrib['idx'])
-                gov_idx = int(dep.find('governor').attrib['idx'])
+        graph.add_edge(gov_idx, dep_idx, dependency=dependency)
 
-                tree.add_edge(gov_idx, dep_idx, dependency=dependency)
-
-    if graph_is_tree(tree):
-        return tree
-    else:
-        return None
-
-
-def remove_circle(graph):
-    print(graph)
+    return graph
 
 
 def get_phrases(graph, rule):
     phrases = []
     trigger_token = rule[0]
     dependency = rule[1]
-    for vertex in graph.vs:
-        idx = vertex.index
-        if vertex['token'] == trigger_token:
-            out_edges = graph.incident(idx, mode='OUT')
-            for edge_id in out_edges:
-                edge = graph.es[edge_id]
-                if edge['dependency'] == dependency:
-                    target_id = edge.target
-                    phrase_indexes = sorted(get_subvertices_from_vertex(graph, target_id))
+    for vertex in graph.nodes.data():
+        token_idx = vertex[0]
+        token_word = vertex[1]['token']
 
-                    phrase = [graph.vs[word_index]['token'] for word_index in phrase_indexes]
+        if token_word == trigger_token:
+            out_edges = graph.out_edges(token_idx)
+
+            for out_edge in out_edges:
+                source_id = out_edge[0]
+                target_id = out_edge[1]
+                edge_dep = graph.get_edge_data(source_id, target_id)['dependency']
+                if edge_dep == dependency:
+                    phrase_indexes = nx.descendants(graph, target_id)
+                    phrase_indexes.add(target_id)
+                    phrase = [graph.nodes.data()[word_index]['token'] for word_index in phrase_indexes]
                     if len(phrase) > 3:
                         phrases.append(phrase)
     return phrases
 
 
-def get_subvertices_from_vertex(graph, vertex_id):
-    sub_vertices = [vertex_id]
-
-    vertex_list = [vertex_id]
-
-    while len(vertex_list) > 0:
-        cur_vertex_id = vertex_list.pop(0)
-        out_edges = graph.incident(cur_vertex_id, mode='OUT')
-        for edge_id in out_edges:
-            edge = graph.es[edge_id]
-            target_id = edge.target
-            vertex_list.append(target_id)
-            sub_vertices.append(target_id)
-
-    return sub_vertices
-
-
-def graph_is_tree(graph):
-    if not graph.is_dag():
-        return False
-
-    for vertex in graph.vs[1:]:
-        in_edges = graph.incident(vertex, mode='IN')
-        if len(in_edges) != 1:
-            return False
-
-    return True
-
-
-def print_graph(graph, vertex=(0, 0)):
-    level = vertex[0]
-    idx = vertex[1]
-
-    print('{:10}'.format(graph.vs[idx]['token']), end=" ")
-
-    out_edges = graph.incident(idx, mode='OUT')
-    while len(out_edges) > 0:
-        edge_id = out_edges.pop()
-        edge = graph.es[edge_id]
-        print('{:10}'.format(edge['dependency']), end=" ")
-        target_id = edge.target
-        print_graph(graph, (level + 1, target_id))
-        print()
-        for i in range(0, level+1):
-            print("          ", end=" ")
-
-
-def print_edges(graph):
-
-    for edge in graph.es:
-        source = graph.vs[edge.source]['token']
-        target = graph.vs[edge.target]['token']
-        dependency = edge['dependency']
-
-        print(source + "(" + str(edge.source) + ")" + " -> " + dependency + " -> " + "(" + str(edge.target) + ")" + target)
+def draw_graph(graph):
+    pos = graphviz_layout(graph, prog='dot')
+    nx.draw_networkx(graph, with_label=True, node_size=200, pos=pos, arrows=True)
+    plt.show()

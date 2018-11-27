@@ -8,23 +8,22 @@ import mysql.connector
 import src.utils.corpora as corpora
 from src.utils.LoopTimer import LoopTimer
 
-feature_file_name = 'tm_features'
-token_type = 'word'
-num_samples = 1000
+
+token_type = 'originalText'
+feature_file_name = f'tm_{token_type}_features'
+dic_name = "pruned_originalText_isML.dict"
+num_samples = 100000
 
 path_to_db = "/media/norpheo/mySQL/db/ssorc"
 path_to_dictionaries = os.path.join(path_to_db, "dictionaries")
-path_to_annotations = os.path.join(path_to_db, 'annotations')
 path_to_models = os.path.join(path_to_db, 'models')
 path_to_feature_file = os.path.join(path_to_db, 'features', feature_file_name + '.npz')
-dic_path = os.path.join(path_to_dictionaries, "full_" + token_type + ".dict")
-tfidf_path = os.path.join(path_to_models, token_type + "_model.tfidf")
+path_to_dictionary = os.path.join(path_to_dictionaries, dic_name)
 
 print('Load Dictionary')
-dictionary = gensim.corpora.Dictionary.load(dic_path)
-print('Load TFIDF')
-tfidf = gensim.models.TfidfModel.load(tfidf_path)
+dictionary = gensim.corpora.Dictionary.load(path_to_dictionary)
 
+print('Load Data')
 connection = mysql.connector.connect(
             host="localhost",
             user="root",
@@ -33,7 +32,7 @@ connection = mysql.connector.connect(
 
 cursor = connection.cursor()
 cursor.execute("USE ssorc;")
-sq1 = f"SELECT abstract_id FROM abstracts WHERE annotated=1 and dictionaried=1 LIMIT {num_samples}"
+sq1 = f"SELECT abstract_id FROM abstracts WHERE isML=1"
 cursor.execute(sq1)
 
 abstracts = set()
@@ -41,19 +40,22 @@ for row in cursor:
     abstracts.add(row[0])
 connection.close()
 
-corpus = corpora.TokenDocStream(token_type, abstracts=abstracts, print_status=True, output='all')
+corpus = corpora.TokenDocStream(abstracts=abstracts,
+                                token_type=token_type,
+                                print_status=False,
+                                output='all',
+                                prune_dic=dictionary)
 row = []
 col = []
 data = []
-lt = LoopTimer()
+lt = LoopTimer(update_after=10, avg_length=200, target=len(abstracts))
 for idx, document in enumerate(corpus):
     if num_samples != -1 and idx == num_samples:
         break
 
     bow = dictionary.doc2bow(document[1])
-    vec_tfidf = tfidf[bow]
 
-    for entry in vec_tfidf:
+    for entry in bow:
         row.append(idx)
         col.append(entry[0])
         data.append(entry[1])
@@ -66,5 +68,6 @@ row = np.array(row)
 col = np.array(col)
 data = np.array(data)
 
-feature_vector = scipy.sparse.csc_matrix((data, (row, col)), shape=(m, n))
+feature_vector = scipy.sparse.csr_matrix((data, (row, col)), shape=(m, n))
+
 scipy.sparse.save_npz(path_to_feature_file, feature_vector)

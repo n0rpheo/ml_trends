@@ -1,7 +1,6 @@
 import os
 import json
 import pickle
-import mysql.connector
 
 import src.features.make_features as mf
 import src.utils.functions as utils
@@ -9,7 +8,7 @@ import src.utils.functions as utils
 from src.utils.LoopTimer import LoopTimer
 
 
-def nlp_to_sent_token(annotation, token_type, clean=True):
+def nlp_to_sent_token(annotation, token_type, clean=True, lower=False):
     sentences = annotation['sentences']
     abs_list = list()
 
@@ -20,7 +19,10 @@ def nlp_to_sent_token(annotation, token_type, clean=True):
         for token in sentence['tokens']:
             pos_list.append(token['pos'])
             # oText = token['originalText']
-            token_list.append(token[token_type])
+            if lower:
+                token_list.append(token[token_type].lower())
+            else:
+                token_list.append(token[token_type])
 
         if clean:
             token_cleaned, pos_cleaned = utils.posFilterString(token_list, pos_list)
@@ -31,7 +33,8 @@ def nlp_to_sent_token(annotation, token_type, clean=True):
 
     return abs_list
 
-def nlp_to_doc_token(annotation, token_type, clean=True):
+
+def nlp_to_doc_token(annotation, token_type, clean=True, lower=False):
     sentences = annotation['sentences']
     abs_list = list()
 
@@ -42,7 +45,10 @@ def nlp_to_doc_token(annotation, token_type, clean=True):
         for token in sentence['tokens']:
             pos_list.append(token['pos'])
             # oText = token['originalText']
-            token_list.append(token[token_type])
+            if lower:
+                token_list.append(token[token_type].lower())
+            else:
+                token_list.append(token[token_type])
 
         if clean:
             token_cleaned, pos_cleaned = utils.posFilterString(token_list, pos_list)
@@ -54,7 +60,7 @@ def nlp_to_doc_token(annotation, token_type, clean=True):
     return abs_list
 
 
-def nlp_to_doc_tokenbigrams(annotation, token_type, clean=True):
+def nlp_to_doc_tokenbigrams(annotation, token_type, clean=True, lower=False):
     sentences = annotation['sentences']
     abs_list = list()
 
@@ -65,7 +71,10 @@ def nlp_to_doc_tokenbigrams(annotation, token_type, clean=True):
         for token in sentence['tokens']:
             pos_list.append(token['pos'])
             # oText = token['originalText']
-            token_list.append(token[token_type])
+            if lower:
+                token_list.append(token[token_type].lower())
+            else:
+                token_list.append(token[token_type])
 
         if clean:
             token_cleaned, pos_cleaned = utils.posFilterString(token_list, pos_list)
@@ -80,7 +89,13 @@ def nlp_to_doc_tokenbigrams(annotation, token_type, clean=True):
 
 
 class TokenDocStream(object):
-    def __init__(self, abstracts, token_type, print_status=False, token_cleaned=True, output=None):
+    def __init__(self, abstracts, token_type, print_status=False, token_cleaned=True, output=None,
+                 print_settings={"update_after": 1, "avg_length": 100},
+                 prune_dic=None,
+                 lower=False):
+        self.lower = lower
+        self.print_settings = print_settings
+        self.dictionary = prune_dic
         self.output = output
         self.print_status = print_status
         self.token_type = token_type
@@ -94,7 +109,9 @@ class TokenDocStream(object):
             print()
 
     def __iter__(self):
-        lc = LoopTimer(update_after=1, avg_length=100, target=self.limit)
+        lc = LoopTimer(update_after=self.print_settings["update_after"],
+                       avg_length=self.print_settings['avg_length'],
+                       target=self.limit)
 
         for abstract_id in self.abstracts:
             path_to_annotation_file = os.path.join(self.path_to_annotations, abstract_id + ".antn")
@@ -106,7 +123,9 @@ class TokenDocStream(object):
 
             with open(path_to_annotation_file, "rb") as annotation_file:
                 annotation = pickle.load(annotation_file)
-            document = nlp_to_doc_token(annotation, self.token_type, clean=self.token_cleaned)
+            document = nlp_to_doc_token(annotation, self.token_type, clean=self.token_cleaned, lower=self.lower)
+            if self.dictionary is not None:
+                document = [word for word in document if word in self.dictionary.token2id]
             if self.print_status:
                 lc.update("Yield Abstract")
             if self.output is None:
@@ -115,22 +134,26 @@ class TokenDocStream(object):
                 yield abstract_id, document
 
 
-class TokenSentenceStream(object):
-    def __init__(self, abstracts, token_type, print_status=False, token_cleaned=True, output=None):
+class AnnotationStream(object):
+    def __init__(self, abstracts, deptype='basicDependencies', print_status=False, output=None,
+                 print_settings={"update_after": 1, "avg_length": 100}):
+        # basicDependencies | enhancedDependencies | enhancedPlusPlusDependencies
+        self.deptype = deptype
+        self.print_settings = print_settings
         self.output = output
         self.print_status = print_status
-        self.token_type = token_type
-        self.token_cleaned = token_cleaned
         self.abstracts = abstracts
-        limit = len(abstracts)
+        self.limit = len(abstracts)
         self.path_to_annotations = '/media/norpheo/mySQL/db/ssorc/annotations'
 
         if print_status:
-            print(f"Number of Docs: {limit}")
+            print(f"Number of Docs: {self.limit}")
             print()
 
     def __iter__(self):
-        lc = LoopTimer(update_after=1, avg_length=100)
+        lc = LoopTimer(update_after=self.print_settings["update_after"],
+                       avg_length=self.print_settings['avg_length'],
+                       target=self.limit)
 
         for abstract_id in self.abstracts:
             path_to_annotation_file = os.path.join(self.path_to_annotations, abstract_id + ".antn")
@@ -142,9 +165,54 @@ class TokenSentenceStream(object):
 
             with open(path_to_annotation_file, "rb") as annotation_file:
                 annotation = pickle.load(annotation_file)
-            document = nlp_to_sent_token(annotation, self.token_type, clean=self.token_cleaned)
+            if self.print_status:
+                lc.update("Yield Abstract")
+            if self.output is None:
+                yield annotation
+            elif self.output == 'all':
+                yield abstract_id, annotation
+
+
+class TokenSentenceStream(object):
+    def __init__(self, abstracts, token_type, print_status=False, token_cleaned=True, output=None,
+                 print_settings={"update_after": 1, "avg_length": 100},
+                 prune_dic=None,
+                 lower=False):
+        self.lower = lower
+        self.dictionary = prune_dic
+        self.print_settings = print_settings
+        self.output = output
+        self.print_status = print_status
+        self.token_type = token_type
+        self.token_cleaned = token_cleaned
+        self.abstracts = abstracts
+        self.limit = len(abstracts)
+        self.path_to_annotations = '/media/norpheo/mySQL/db/ssorc/annotations'
+
+        if print_status:
+            print(f"Number of Docs: {self.limit}")
+            print()
+
+    def __iter__(self):
+        lc = LoopTimer(update_after=self.print_settings["update_after"],
+                       avg_length=self.print_settings['avg_length'],
+                       target=self.limit)
+
+        for abstract_id in self.abstracts:
+            path_to_annotation_file = os.path.join(self.path_to_annotations, abstract_id + ".antn")
+            if not os.path.isfile(path_to_annotation_file):
+                print()
+                print(abstract_id + " in db but missing file.")
+                print()
+                continue
+
+            with open(path_to_annotation_file, "rb") as annotation_file:
+                annotation = pickle.load(annotation_file)
+            document = nlp_to_sent_token(annotation, self.token_type, clean=self.token_cleaned, lower=self.lower)
 
             for sentence_id, sentence in enumerate(document):
+                if self.dictionary is not None:
+                    sentence = [word for word in sentence if word in self.dictionary.token2id]
                 if self.print_status:
                     lc.update("Yield Sentence")
                 if self.output is None:

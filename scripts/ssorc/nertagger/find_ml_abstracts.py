@@ -1,20 +1,65 @@
 import os
 import pickle
+import threading
 
 import mysql.connector
 
 from nltk.tag import StanfordNERTagger
 from src.utils.corpora import TokenDocStream
 from src.utils.LoopTimer import LoopTimer
+from src.utils.functions import lookahead
 
-st = StanfordNERTagger('/media/norpheo/mySQL/stanford-ner-2018-02-27/classifiers/ner-mlalgo-model.ser.gz',
-                       '/media/norpheo/mySQL/stanford-ner-2018-02-27/stanford-ner.jar',
-                       encoding='utf-8')
+
+def worker(abstract_id_, abstract_):
+    st = StanfordNERTagger(path_to_ner_model,
+                           '/media/norpheo/mySQL/stanford-ner-2018-02-27/stanford-ner.jar',
+                           encoding='utf-8')
+    classified_text = st.tag(abstract_)
+
+    algo_name = None
+    for item in classified_text:
+        if item[1] == "MLALGO":
+            if algo_name is None:
+                algo_name = list()
+            algo_name.append(item[0])
+        elif algo_name is not None:
+            algo_name = " ".join(algo_name)
+
+            ml_algo_abstract.add(abstract_id_)
+            if algo_name not in ml_algos:
+                ml_algos[algo_name] = 0
+            ml_algos[algo_name] += 1
+            algo_name = None
+
+
+NUM_WORKERS = 12
+limit_abstracts = 20000
 
 path_to_ner = "/media/norpheo/mySQL/db/ssorc/NER"
-path_to_ml_algos_save = os.path.join(path_to_ner, "ml_algos.dict")
-path_to_ml_algo_abstract_save = os.path.join(path_to_ner, "ml_algo_abstract.pickle")
-path_to_skip_list = os.path.join(path_to_ner, "skip_list.pickle")
+
+# Model 1 Files
+path_to_ner_model1 = '/media/norpheo/mySQL/stanford-ner-2018-02-27/classifiers/ner-mlalgo-model.ser.gz'
+path_to_ml_algos_save1 = os.path.join(path_to_ner, "ml_algos.dict")
+path_to_ml_algo_abstract_save1 = os.path.join(path_to_ner, "ml_algo_abstract.pickle")
+path_to_skip_list1 = os.path.join(path_to_ner, "skip_list.pickle")
+
+# Model 2 Files - USE THIS
+path_to_ner_model2 = os.path.join(path_to_ner, 'new_ner-model.ser.gz')
+path_to_ml_algos_save2 = os.path.join(path_to_ner, "ml_algos_new.dict")
+path_to_ml_algo_abstract_save2 = os.path.join(path_to_ner, "ml_algo_abstract_new.pickle")
+path_to_skip_list2 = os.path.join(path_to_ner, "skip_list_new.pickle")
+
+# Model Test Files
+path_to_ner_model_t = os.path.join(path_to_ner, 'new_ner-model.ser.gz')
+path_to_ml_algos_save_t = os.path.join(path_to_ner, "ml_algos_test.dict")
+path_to_ml_algo_abstract_save_t = os.path.join(path_to_ner, "ml_algo_abstract_test.pickle")
+path_to_skip_list_t = os.path.join(path_to_ner, "skip_list_test.pickle")
+
+# Assign Files
+path_to_ner_model = path_to_ner_model2
+path_to_ml_algos_save = path_to_ml_algos_save2
+path_to_ml_algo_abstract_save = path_to_ml_algo_abstract_save2
+path_to_skip_list = path_to_skip_list2
 
 if os.path.isfile(path_to_skip_list):
     with open(path_to_skip_list, "rb") as skip_list_file:
@@ -45,58 +90,64 @@ cursor.execute("USE ssorc;")
 sq1 = "SELECT abstract_id FROM abstracts WHERE annotated=1 and dictionaried=1"
 cursor.execute(sq1)
 
+print("Collecting Abstracts")
 abstracts = set()
-lc = LoopTimer(update_after=10000, avg_length=200000)
 for row in cursor:
     abstracts.add(row[0])
-    lc.update("Collecting")
 connection.close()
 
 abstracts = abstracts.difference(skip_list)
-abstracts = set(list(abstracts)[:2000])
+abstracts = set(list(abstracts)[:limit_abstracts])
 
 docstream = TokenDocStream(token_type="originalText",
                            abstracts=abstracts,
                            token_cleaned=False,
-                           print_status=True,
+                           print_status=False,
                            output='all')
+
+lc = LoopTimer(update_after=NUM_WORKERS, avg_length=NUM_WORKERS*10, target=len(abstracts))
+doc_bag = list()
+starting_ml_algos = len(ml_algos)
+starting_ml_abstracts = len(ml_algo_abstract)
+for doc, has_next in lookahead(docstream):
+
+    doc_bag.append(doc)
+    if len(doc_bag) == NUM_WORKERS or not has_next:
+        threads = list()
+
+        for document in doc_bag:
+            abstract_id = document[0]
+            abstract = document[1]
+            t = threading.Thread(target=worker, args=(abstract_id, abstract,))
+            threads.append(t)
+            t.start()
+            skip_list.add(abstract_id)
+
+        for thread in threads:
+            thread.join()
+
+        doc_bag = list()
+        with open(path_to_ml_algos_save, "wb") as algo_save_file:
+            pickle.dump(ml_algos, algo_save_file, protocol=pickle.HIGHEST_PROTOCOL)
+        with open(path_to_ml_algo_abstract_save, "wb") as algo_save_file:
+            pickle.dump(ml_algo_abstract, algo_save_file, protocol=pickle.HIGHEST_PROTOCOL)
+        with open(path_to_skip_list, "wb") as skip_list_file:
+            pickle.dump(skip_list, skip_list_file, protocol=pickle.HIGHEST_PROTOCOL)
+    num_ml_abstracts = len(ml_algo_abstract)
+    diff_ml_abstracts = num_ml_abstracts - starting_ml_abstracts
+    lc.update(f"Find ML - Abstracts ({diff_ml_abstracts})")
+
 print()
-for doc in docstream:
-    abstract_id = doc[0]
-    abstract = doc[1]
-    classified_text = st.tag(abstract)
-
-    algo_name = None
-    for item in classified_text:
-        if item[1] == "MLALGO":
-            if algo_name is None:
-                algo_name = list()
-            algo_name.append(item[0])
-        elif algo_name is not None:
-            algo_name = " ".join(algo_name)
-
-            ml_algo_abstract.add(abstract_id)
-            if algo_name not in ml_algos:
-                ml_algos[algo_name] = 0
-            ml_algos[algo_name] += 1
-
-            with open(path_to_ml_algos_save, "wb") as algo_save_file:
-                pickle.dump(ml_algos, algo_save_file, protocol=pickle.HIGHEST_PROTOCOL)
-
-            with open(path_to_ml_algo_abstract_save, "wb") as algo_save_file:
-                pickle.dump(ml_algo_abstract, algo_save_file, protocol=pickle.HIGHEST_PROTOCOL)
-
-            algo_name = None
-
-    skip_list.add(abstract_id)
-    with open(path_to_skip_list, "wb") as skip_list_file:
-        pickle.dump(skip_list, skip_list_file, protocol=pickle.HIGHEST_PROTOCOL)
-
 print()
-print()
+num_ml_algos = len(ml_algos)
+num_ml_abstracts = len(ml_algo_abstract)
+diff_ml_algos = num_ml_algos - starting_ml_algos
+diff_ml_abstracts = num_ml_abstracts - starting_ml_abstracts
+
 for algo in ml_algos:
     print(f"{algo}: {ml_algos[algo]}")
 print()
-print(f"{len(ml_algos)} Machine Learning Algorithms found.")
-print(f"{len(ml_algo_abstract)} Number of Abstracts with potential ML Content")
+
+print(f"{diff_ml_algos} new Machine Learning Algorithms found. Total: {num_ml_algos}")
+print(f"{diff_ml_abstracts} new Abstracts with potential ML Content found. Total {num_ml_abstracts}")
 
