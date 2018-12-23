@@ -2,14 +2,19 @@ import os
 import re
 import gensim
 
+import src.utils.selector as selector
+
 path_to_db = "/media/norpheo/mySQL/db/ssorc"
 path_to_dictionaries = os.path.join(path_to_db, "dictionaries")
 
-dic_filename = "full_originalText_potML.dict"
-new_dic_filename = 'pruned_originalText_potML.dict'
+
 sw_filename = "stopwords_default.txt"
 
-dic_path = os.path.join(path_to_dictionaries, dic_filename)
+dic_path = selector.select_path_from_dir(path_to_dictionaries,
+                                         phrase="Select Dictionary to prune: ",
+                                         suffix=".dict")
+new_dic_filename = input("New Dictionary filename: ")
+
 new_dic_path = os.path.join(path_to_dictionaries, new_dic_filename)
 dictionary = gensim.corpora.Dictionary.load(dic_path)
 
@@ -35,6 +40,6 @@ for num, idx in enumerate(dictionary):
 dictionary.filter_tokens(bad_ids=[dictionary.token2id[stopword] for stopword in stopwords if stopword in dictionary.token2id])
 
 print(dictionary)
-dictionary.filter_extremes(no_below=2, no_above=0.5, keep_n=None)
+dictionary.filter_extremes(no_below=3, keep_n=None)
 print(dictionary)
 dictionary.save(new_dic_path)

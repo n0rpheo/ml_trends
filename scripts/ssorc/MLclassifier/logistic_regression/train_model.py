@@ -13,6 +13,8 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import confusion_matrix
 from sklearn import svm
 
+from src.utils.selector import select_path_from_dir
+
 ftype = 'w2v'
 
 path_to_db = "/media/norpheo/mySQL/db/ssorc"
@@ -20,15 +22,21 @@ path_to_mllr_model = os.path.join(path_to_db, 'models', 'mllr.joblib')
 path_to_mlsvc_model = os.path.join(path_to_db, 'models', 'mlsvc.joblib')
 
 if ftype == 'bow':
-    feature_file_name = 'lr_MLclassifier_bow_features'
-    path_to_feature_file = os.path.join(path_to_db, 'features', feature_file_name + '.npz')
-    path_to_target_file = os.path.join(path_to_db, 'features', feature_file_name + '_targets.npy')
+    path_to_feature_file = select_path_from_dir(os.path.join(path_to_db, 'features'),
+                                                phrase="Select Feature File: ",
+                                                suffix='.npz')
+    path_to_target_file = select_path_from_dir(os.path.join(path_to_db, 'features'),
+                                               phrase="Select Target File: ",
+                                               suffix='_targets.npy')
     all_features = scipy.sparse.load_npz(path_to_feature_file)
     all_targets = np.load(path_to_target_file)
 elif ftype == 'w2v':
-    feature_file_name = 'lr_MLclassifier_w2v_features'
-    path_to_feature_file = os.path.join(path_to_db, 'features', feature_file_name + '.pickle')
-    path_to_target_file = os.path.join(path_to_db, 'features', feature_file_name + '_targets.pickle')
+    path_to_feature_file = select_path_from_dir(os.path.join(path_to_db, 'features'),
+                                                phrase="Select Feature File: ",
+                                                suffix='.pickle')
+    path_to_target_file = select_path_from_dir(os.path.join(path_to_db, 'features'),
+                                               phrase="Select Target File: ",
+                                               suffix='_targets.pickle')
 
     with open(path_to_feature_file, "rb") as feature_file:
         all_features = pickle.load(feature_file)

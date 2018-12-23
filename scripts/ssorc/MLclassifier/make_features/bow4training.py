@@ -7,16 +7,18 @@ import mysql.connector
 
 import src.utils.corpora as corpora
 from src.utils.LoopTimer import LoopTimer
+from src.utils.selector import select_path_from_dir
 
 feature_file_name = 'lr_MLclassifier_bow_features'
 
-dic_file_name = "pruned_originalText_potML.dict"
-tfidf_file_name = "pruned_oT_potML.tfidf"
 token_type = 'originalText'
 
 path_to_db = "/media/norpheo/mySQL/db/ssorc"
-dic_path = os.path.join(path_to_db, "dictionaries", dic_file_name)
-tfidf_path = os.path.join(path_to_db, "models", tfidf_file_name)
+dic_path = select_path_from_dir(os.path.join(path_to_db, "dictionaries"),
+                                phrase="Select Dictionary: ")
+tfidf_path = select_path_from_dir(os.path.join(path_to_db, "models"),
+                                  phrase="Select TFIDF Model: ",
+                                  suffix=".tfidf")
 
 path_to_feature_file = os.path.join(path_to_db, 'features', f"{feature_file_name}.npz")
 path_to_target_file = os.path.join(path_to_db, 'features', f"{feature_file_name}_targets.npy")

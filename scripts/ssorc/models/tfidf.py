@@ -4,17 +4,27 @@ import mysql.connector
 
 from src.utils.corpora import TokenDocStream
 from src.utils.LoopTimer import LoopTimer
+import src.utils.selector as selector
 
-
-token_type = 'originalText'
-
-tfdf_model_name = "pruned_oT_potML.tfidf"
-dic_file_name = "pruned_originalText_potML.dict"
-
+token_types = list()
+dic_paths = list()
+model_paths = list()
 path_to_db = "/media/norpheo/mySQL/db/ssorc"
-path_to_dictionary = os.path.join(path_to_db, "dictionaries",  dic_file_name)
+valid_types = ["word", "wordbigram", "pos", "posbigram", "lemma", "lemmabigram", "originalText", "originalTextbigram"]
 
-dictionary = gensim.corpora.Dictionary.load(path_to_dictionary)
+while True:
+    token_type = selector.select_item_from_list(list(set(valid_types) - set(token_types)), "Select Token Type: ")
+    tfidf_model_name = input("Enter tfidf Modelname: ")
+    dic_path = selector.select_path_from_dir(os.path.join(path_to_db, "dictionaries"), "Select Dictionary: ")
+    model_path = os.path.join(path_to_db, "models", tfidf_model_name)
+
+    token_types.append(token_type)
+    dic_paths.append(dic_path)
+    model_paths.append(model_path)
+
+    if input("Add more Models? (y/n) ") != 'y':
+        break
+
 
 connection = mysql.connector.connect(host="localhost",
                                      user="root",
@@ -22,8 +32,7 @@ connection = mysql.connector.connect(host="localhost",
 
 cursor = connection.cursor()
 cursor.execute("USE ssorc;")
-#sq1 = "SELECT abstract_id FROM abstracts WHERE annotated=1 and dictionaried=1"
-sq1 = "SELECT abstract_id FROM mlabstracts"
+sq1 = "SELECT abstract_id FROM abstracts_ml WHERE entities LIKE '%machine learning%' AND annotated=1"
 cursor.execute(sq1)
 
 lc = LoopTimer(update_after=1000)
@@ -35,15 +44,23 @@ connection.close()
 
 
 class Corpus(object):
-    def __init__(self):
-        self.corpus = TokenDocStream(abstracts, token_type, token_cleaned=False, print_status=True, lower=True)
+    def __init__(self, token_type_, dictionary_):
+        self.dictionary = dictionary_
+        self.corpus = TokenDocStream(abstracts,
+                                     token_type=token_type_,
+                                     token_cleaned=False,
+                                     print_status=True,
+                                     lower=True)
 
     def __iter__(self):
         for document in self.corpus:
-            yield dictionary.doc2bow(document)
+            yield self.dictionary.doc2bow(document)
 
 
-corpus = Corpus()
-print()
-tfidf = gensim.models.TfidfModel(corpus)
-tfidf.save(os.path.join(path_to_db, "models", tfdf_model_name))
+for i in range(len(token_types)):
+    dictionary = gensim.corpora.Dictionary.load(dic_paths[i])
+
+    corpus = Corpus(token_type_=token_types[i], dictionary_=dictionary)
+    print()
+    tfidf = gensim.models.TfidfModel(corpus)
+    tfidf.save(model_paths[i])

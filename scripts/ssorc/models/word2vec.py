@@ -5,7 +5,7 @@ from gensim.models import Word2Vec
 
 from src.utils.corpora import TokenSentenceStream
 
-w2v_model_name = 'word2vec_isML.model'
+w2v_model_name = 'word2vec_ML.model'
 
 path_to_db = "/media/norpheo/mySQL/db/ssorc"
 path_to_word2vec_model = os.path.join(path_to_db, 'models', w2v_model_name)
@@ -20,7 +20,7 @@ connection = mysql.connector.connect(
 cursor = connection.cursor()
 cursor.execute("USE ssorc;")
 #sq1 = f"SELECT abstract_id FROM abstracts WHERE annotated=1 AND dictionaried=1 LIMIT 100000"
-sq1 = f"SELECT abstract_id FROM mlabstracts"
+sq1 = f"SELECT abstract_id FROM abstracts_ml"
 cursor.execute(sq1)
 
 abstracts = set()

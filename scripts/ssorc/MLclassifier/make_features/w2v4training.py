@@ -8,11 +8,14 @@ from gensim.models import Word2Vec
 
 from src.utils.corpora import TokenDocStream
 from src.features.transformations import tokens_to_mean_w2v
+from src.utils.selector import select_path_from_dir
 
 feature_file_name = 'lr_MLclassifier_w2v_features'
 
 path_to_db = "/media/norpheo/mySQL/db/ssorc"
-path_to_word2vec_model = os.path.join(path_to_db, 'models', 'word2vec_isML.model')
+path_to_word2vec_model = select_path_from_dir(os.path.join(path_to_db, 'models'),
+                                              phrase="Select w2v-model: ",
+                                              suffix=".model")
 path_to_feature_file = os.path.join(path_to_db, 'features', feature_file_name + '.pickle')
 path_to_target_file = os.path.join(path_to_db, 'features', feature_file_name + '_targets.pickle')
 
@@ -37,7 +40,7 @@ for row in cursor:
     abstract_labels_dict[abstract_id] = abstract_label
 connection.close()
 
-documents = TokenDocStream(abstracts=abstract_ids, token_type='word', print_status=True, output='all', lower=True)
+documents = TokenDocStream(abstracts=abstract_ids, token_type='originalText', print_status=True, output='all', lower=True)
 
 features = list()
 targets = list()

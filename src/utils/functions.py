@@ -71,7 +71,6 @@ def get_vec_tuple_from_string(input_string):
 
 
 def append_vec2data(sparse_vec, data, row, col, row_count, col_offset):
-
     for entry in sparse_vec:
         row.append(row_count)
         col.append(int(entry[0]) + col_offset)

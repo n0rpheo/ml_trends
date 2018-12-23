@@ -1,90 +1,53 @@
 import math
 import numpy as np
-
-from src.utils.LoopTimer import LoopTimer
-
-class ksc:
-    def __init__(self, max_iter=1000):
-        self.max_iter = max_iter
-        self.k = 0
-        self.n = 0
-        self.dim = 0
-
-    def train(self, xs, mu):
-        self.k = len(mu)
-        self.n = len(xs)
-        self.dim = xs[0].shape[0]
-
-        clusters = dict()
-
-        for j in range(0, self.k):
-            clusters[j] = set()
-
-        self.assign_clusters(mu, xs, clusters)
-
-        lc = LoopTimer(update_after=1)
-
-        for iteration in range(0, self.max_iter):
-            old_clusters = dict()
-
-            for j in range(0, self.k):
-                old_clusters[j] = clusters[j].copy()
-
-            mu = list()
-            for j in range(0, self.k):
-                # Calculate M
-                M = np.zeros((self.dim, self.dim))
-                for i in range(0, self.n):
-                    if i in clusters[j]:
-                        x_reshape = xs[i].reshape((xs[i].shape[0], 1))
-
-                        matrix = np.subtract(np.ones((self.dim, self.dim)),
-                                             np.matmul(x_reshape, x_reshape.T) / math.pow(l2norm(xs[i]), 2))
-
-                        M = np.add(M, matrix)
-
-                w, v = np.linalg.eig(M)
-
-                mu.append(v[np.argmin(w)])
-
-                clusters[j] = set()
-
-            self.assign_clusters(mu, xs, clusters)
-
-            break_cond = True
-            for j in range(0, self.k):
-                sym_diff = old_clusters[j].symmetric_difference(clusters[j])
-                if len(sym_diff) > 0:
-                    break_cond = False
-
-            lc.update("KSC")
-
-            if break_cond:
-                break
-
-        return clusters, mu
-
-    def assign_clusters(self, mu, series, clusters):
-        for i in range(0, self.n):
-            best_dist = float("inf")
-
-            for j in range(0, self.k):
-                dist = distance(series[i], mu[j])
-                if dist < best_dist:
-                    best_dist = dist
-                    optimal_cluster = j
-
-            clusters[optimal_cluster].add(i)
+import random
+import pandas as pd
 
 
+class KSpectralCluster:
+    def __init__(self, time_interval):
+        self.d_range = time_interval
+        time_length = len(self.d_range)
+        r_scale = 2000
+        scale = 0.03
+        up_trend = list()
+        down_trend = list()
+        even_trend = list()
+        # upwards trend
+        for i in range(time_length):
+            assign = scale * (0.5 * math.exp((i - (time_length - 1)) / time_length)
+                              + 0.25 + random.randint(0, 100) / r_scale)
+            up_trend.append(assign)
+        # downwards_trend
+        for i in range(time_length):
+            assign = scale * (0.5 * (-math.exp((i - (time_length - 1)) / time_length) + 1)
+                              + 0.25 + random.randint(0, 100) / r_scale)
+            down_trend.append(assign)
+        # even_trend
+        for i in range(time_length):
+            assign = scale * (0.5 + random.randint(0, 100) / r_scale)
+            even_trend.append(assign)
 
+        self.trendFrame = pd.DataFrame(index=self.d_range)
+        self.trendFrame['up'] = up_trend
+        self.trendFrame['down'] = down_trend
+        self.trendFrame['even'] = even_trend
 
+        self.trend_types = ['up', 'even', 'down']
 
+    def assign_cluster(self, df):
+        best_dist = float("inf")
 
+        series = df[self.d_range].values.tolist()
 
+        for trend_type in self.trend_types:
+            cluster = self.trendFrame[trend_type][self.d_range].values.tolist()
+            dist = distance(series, cluster)
+            if dist < best_dist:
+                best_dist = dist
+                optimal_cluster = self.trend_types.index(trend_type)
 
-
-
+        return optimal_cluster
 
 
 def distance(x, y):

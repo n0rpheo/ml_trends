@@ -13,12 +13,11 @@ from src.features.const import known_labels
 import src.utils.functions as utils
 from src.utils.LoopTimer import LoopTimer
 
+path_to_db = "/media/norpheo/mySQL/db/ssorc"
+
 
 def load_concratings():
-    dirname = os.path.dirname(__file__)
-    external_dir = os.path.join(dirname, '../../data/external')
-
-    filename = os.path.join(external_dir, 'concreteness_ratings.txt')
+    filename = os.path.join(path_to_db, 'external', 'concreteness_ratings.txt')
     with open(filename) as file:
         cratings = file.readlines()
 
@@ -32,7 +31,6 @@ def load_concratings():
 
 
 def build_feature_file(dtype):
-    dirname = os.path.dirname(__file__)
     dictionary_dir = os.path.join(dirname, '../../data/processed/' + dtype + '/dictionaries')
     tfidf_dir = os.path.join(dirname, '../../data/processed/' + dtype + '/tfidf')
     feature_file = os.path.join(dirname, '../../data/processed/' + dtype + '/features/ap_features.json')

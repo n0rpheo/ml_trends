@@ -115,7 +115,6 @@ for i in range(t_from, t_to):
     init_clusters[1].append(assign)
 
 #even_trend
-
 for i in range(t_from, t_to):
     assign = 0.5 + random.randint(0, 100)/r_scale
     init_clusters[2].append(assign)
