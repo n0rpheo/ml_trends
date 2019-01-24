@@ -1,12 +1,14 @@
 import os
 import time
 import datetime
+import numpy as np
 
 from langdetect import detect_langs  # https://pypi.org/project/langdetect/
 from langdetect.lang_detect_exception import LangDetectException
 
 from timeit import default_timer as timer
 from sklearn.externals import joblib
+import sklearn.metrics as skmetrics
 
 
 def check_string_for_english(input_text):
@@ -127,3 +129,38 @@ def lookahead(iterable):
         last = val
     # Report the last value.
     yield last, False
+
+
+def print_scoring(targets, prediction, avg_type="weighted"):
+    labels = list(set(targets))
+    precision = dict()
+    recall = dict()
+
+    conf_matrix = skmetrics.confusion_matrix(targets, prediction, labels=labels)
+    prec_score = skmetrics.precision_score(targets, prediction, labels=labels, average=avg_type)
+    accuracy_score = skmetrics.accuracy_score(targets, prediction)
+    recall_score = skmetrics.recall_score(targets, prediction, average=avg_type)
+    f1_score = skmetrics.f1_score(targets, prediction, average=avg_type)
+
+    print("Occurences of Labels (Relevant | Retrieved)")
+    for label in labels:
+        label_idx = labels.index(label)
+
+        rel = np.sum(conf_matrix, axis=1)[label_idx]
+        ret = np.sum(conf_matrix, axis=0)[label_idx]
+
+        precision[label] = conf_matrix[label_idx][label_idx] / ret
+        recall[label] = conf_matrix[label_idx][label_idx] / rel
+
+        print(f"{label}: {rel} | {ret}")
+
+    print()
+    print("     \tPreci | Recall")
+    for label in labels:
+        print(f"{str(label)[0:5]}:\t{str(precision[label])[0:5]} | {str(recall[label])[0:5]}")
+
+    print()
+    print(f"Accuracy:  {accuracy_score}")
+    print(f"Precision: {prec_score}")
+    print(f"Recall:    {recall_score}")
+    print(f"F1-Score:  {f1_score}")
