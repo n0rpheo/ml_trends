@@ -1,27 +1,23 @@
 import os
 import gensim
+import pickle
+import numpy as np
 
 path_to_db = "/media/norpheo/mySQL/db/ssorc"
-path_to_models = os.path.join(path_to_db, 'models')
-path_to_dictionaries = os.path.join(path_to_db, 'dictionaries')
+model_file_name = "tm_lda_500topics.pickle"
 
-model_name = 'tm_lda_lemma.model'
-dictionary_name = 'full_lemma.dict'
-path_to_model = os.path.join(path_to_models, model_name)
-dictionary_path = os.path.join(path_to_dictionaries, dictionary_name)
+print('Load Dictionary')
+dictionary = gensim.corpora.Dictionary.load(os.path.join(path_to_db, "dictionaries", "tm_dictionary.dict"))
 
-print('Load Dict')
-dictionary = gensim.corpora.Dictionary.load(dictionary_path)
-print('Load Model')
-lda_model = gensim.models.LdaMulticore.load(path_to_model)
+with open(os.path.join(path_to_db, "models", model_file_name), "rb") as model_file:
+    lda_model = pickle.load(model_file)
 
-for tid in range(0, lda_model.num_topics):
-    topic_terms = lda_model.get_topic_terms(tid, topn=10)
+n_top_words = 5
+topic_words = {}
+for topic, comp in enumerate(lda_model.components_):
+    word_idx = np.argsort(comp)[::-1][:n_top_words]
+    topic_words[topic] = [dictionary[i] for i in word_idx]
 
-    print(f"Topic {tid}:")
-
-    topics = list()
-    for topic_term in topic_terms:
-        term_id = topic_term[0]
-        topics.append(dictionary[term_id])
-    print(", ".join(topics))
+for topic, words in topic_words.items():
+    word_string = "\t".join(words)
+    print(f'Topic: {topic}: {word_string}')

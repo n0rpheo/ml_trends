@@ -2,12 +2,17 @@ import os
 import pickle
 import pandas as pd
 
+import math
+
 import src.utils.ksc as ksc
 
 path_to_db = "/media/norpheo/mySQL/db/ssorc"
-df_file_path = os.path.join(path_to_db, "popularities", "df_500topics_dist_hl.pickle")
+df_file_path = os.path.join(path_to_db, "popularities", "df_500topics_balanced_pruned_tm_lemma_pruned.pickle")
 
-feature_file_path = os.path.join(path_to_db, 'popularities', 'pop_feat_hl.pandas')  # output
+feature_file_path = os.path.join(path_to_db, 'popularities', 'pop_feat.pandas')  # output
+predict = True
+trend_set = ['up', 'down']
+
 
 with open(df_file_path, "rb") as pif:
     dataFrames = pickle.load(pif)
@@ -15,21 +20,27 @@ with open(df_file_path, "rb") as pif:
 num_topics = len(dataFrames)
 labels = [label for label in dataFrames[0]][:-2]
 columns = list()
-for label in labels:
-    columns.append(f"ldp-start-{label}")
-    columns.append(f"ldp-end-{label}")
-    columns.append(f"ldr-{label}")
 
-    #columns.append(f"ldd-start-{label}") # dont use
-    #columns.append(f"ldd-end-{label}") # dont use
+
+full_range = pd.date_range(start='2000', end='2015', freq='AS')
+
+if predict:
+    d_range = pd.date_range(start='2000', end='2005', freq='AS')
+    start_range = d_range[:3]
+    end_range = d_range[-3:]
+    for label in labels:
+        columns.append(f"ldp-{label}")
+        columns.append(f"ldd-{label}")
+else:
+    d_range = pd.date_range(start='2000', end='2015', freq='AS')
+    start_range = d_range[:5]
+    end_range = d_range[-5:]
+    for label in labels:
+        columns.append(f"ldp-{label}")
+        columns.append(f"ldr-{label}")
+        columns.append(f"ldd-{label}")
 
 columns.append('trend')
-
-d_range = pd.date_range(start='2000', end='2015', freq='AS')
-
-start_range = d_range[:5]
-end_range = d_range[-5:]
-
 trends = list()
 
 featureFrame = pd.DataFrame(0.0, index=range(num_topics), columns=columns)
@@ -41,31 +52,36 @@ for topic in range(num_topics):
 
     df['sum'] = df['sum'] / df['spy']
 
-    kspec = ksc.KSpectralCluster(time_interval=d_range)
+    kspec = ksc.KSpectralCluster(time_interval=full_range, trend_types=trend_set)
 
     assignment = kspec.assign_cluster(df['sum'])
-
-    ldp = dict()  # % of time topic is Label x
-    ldd = dict()  # % of label x going up/down
 
     featureFrame['trend'][topic] = assignment
 
     for label in labels:
         df['lpy'] += df[label]
 
+
     # Multiplikator ist notwendig, damit die Mittelwerte auf 1 summieren
     # hierfür werden die Zeilen(jahre) rausgerechnet, in denen das Topic
     # nicht vorkommt.
-    multipli = len(df['lpy']) / df['lpy'].astype(bool).sum(axis=0)
+    multi_all = len(df['lpy'][d_range]) / df['lpy'][d_range].astype(bool).sum(axis=0) if df['lpy'][d_range].astype(bool).sum(axis=0) > 0 else 0
+    multi_start = len(df['lpy'][start_range]) / df['lpy'][start_range].astype(bool).sum(axis=0) if df['lpy'][start_range].astype(bool).sum(axis=0) > 0 else 0
+    multi_end = len(df['lpy'][end_range]) / df['lpy'][end_range].astype(bool).sum(axis=0) if df['lpy'][end_range].astype(bool).sum(axis=0) > 0 else 0
 
     for label in labels:
         df[label] = df[label] / df['lpy']
         df[label] = df[label].fillna(0)
-        ldpStart = df[label][start_range].values.mean() * multipli
-        ldpEnd = df[label][end_range].values.mean() * multipli
-        featureFrame[f"ldp-start-{label}"][topic] = ldpStart
-        featureFrame[f"ldp-end-{label}"][topic] = ldpEnd
-        featureFrame[f"ldr-{label}"][topic] = (ldpEnd / ldpStart) if ldpStart > 0 else 0
+
+        ldp = df[label][d_range].values.mean() * multi_all
+        ldpStart = df[label][start_range].values.mean() * multi_start
+        ldpEnd = df[label][end_range].values.mean() * multi_end
+
+        ldd = ldpEnd - ldpStart
+        featureFrame[f"ldp-{label}"][topic] = ldp
+        featureFrame[f"ldd-{label}"][topic] = ldd
+        if not predict:
+            featureFrame[f"ldr-{label}"][topic] = (ldpEnd / ldpStart) if ldpStart > 0 else 0
 
 print(featureFrame)
 featureFrame.to_pickle(feature_file_path)

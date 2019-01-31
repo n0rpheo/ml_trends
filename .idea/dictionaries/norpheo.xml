@@ -4,6 +4,7 @@
       <w>algo</w>
       <w>algos</w>
       <w>anno</w>
+      <w>bigram</w>
       <w>conc</w>
       <w>cratings</w>
       <w>dbcon</w>
@@ -11,6 +12,7 @@
       <w>deptrees</w>
       <w>docdocstream</w>
       <w>docstream</w>
+      <w>elist</w>
       <w>findphrasesbyrules</w>
       <w>findrulesbyphrase</w>
       <w>flength</w>
@@ -21,14 +23,20 @@
       <w>infos</w>
       <w>joblib</w>
       <w>lcpupbwuwb</w>
+      <w>lemmadb</w>
       <w>lkey</w>
       <w>loadrules</w>
       <w>mlalgo</w>
       <w>mllr</w>
       <w>mlsvc</w>
       <w>norpheo</w>
+      <w>notriggers</w>
+      <w>otdb</w>
+      <w>popularities</w>
+      <w>posbigram</w>
       <w>posbigramm</w>
       <w>posbigrams</w>
+      <w>posdb</w>
       <w>posunigramm</w>
       <w>pred</w>
       <w>rhetfunc</w>
@@ -36,10 +44,14 @@
       <w>ssorc</w>
       <w>tfidf</w>
       <w>tokenbigrams</w>
+      <w>toty</w>
       <w>vect</w>
       <w>vectorizer</w>
+      <w>wordbigram</w>
       <w>wordbigramm</w>
+      <w>worddb</w>
       <w>wordunigramm</w>
+      <w>yeardb</w>
     </words>
   </dictionary>
 </component>

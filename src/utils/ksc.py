@@ -5,7 +5,7 @@ import pandas as pd
 
 
 class KSpectralCluster:
-    def __init__(self, time_interval):
+    def __init__(self, time_interval, trend_types=['up', 'even', 'down']):
         self.d_range = time_interval
         time_length = len(self.d_range)
         r_scale = 2000
@@ -33,7 +33,7 @@ class KSpectralCluster:
         self.trendFrame['down'] = down_trend
         self.trendFrame['even'] = even_trend
 
-        self.trend_types = ['up', 'even', 'down']
+        self.trend_types = trend_types
 
     def assign_cluster(self, df):
         best_dist = float("inf")

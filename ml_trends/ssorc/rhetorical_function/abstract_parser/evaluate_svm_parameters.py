@@ -11,25 +11,25 @@ from src.utils.functions import print_scoring
 
 reg_paras = list()
 
-for i in range(1, 10):
-    reg_paras.append(i/10)
+#for i in range(1, 10):
+#    reg_paras.append(i/10)
 
-for i in range(0, 10):
-    reg_paras.append(1+i)
+#for i in range(0, 10):
+#    reg_paras.append(1+i)
 for i in range(1, 10):
     reg_paras.append(10+i*10)
 for i in range(1, 10):
     reg_paras.append(100+i*100)
 for i in range(1, 10):
     reg_paras.append(1000+i*1000)
-for i in range(1, 100):
+for i in range(1, 10):
     reg_paras.append(10000 + i*10000)
 
 
 #reg_paras = [100000, 300000, 500000]
 path_to_db = "/media/norpheo/mySQL/db/ssorc"
 
-feature_set_name = "rf_hl_lcpupbwuwb"
+feature_set_name = "rf_balanced_pruned_lcpupbwuwb"
 
 feature_file = os.path.join(path_to_db, "features", f"{feature_set_name}_features.npz")
 target_file = os.path.join(path_to_db, "features", f"{feature_set_name}_targets.npy")
@@ -50,7 +50,7 @@ best_score = 0
 score_list = list()
 
 print("Start Training:")
-lc = LoopTimer(update_after=1, avg_length=20, target=len(reg_paras))
+lc = LoopTimer(update_after=1, avg_length=5, target=len(reg_paras))
 for c_para in reg_paras:
     model = svm.SVC(decision_function_shape='ovo',
                     C=c_para,

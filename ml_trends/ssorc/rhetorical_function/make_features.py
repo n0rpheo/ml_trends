@@ -9,7 +9,7 @@ import src.utils.functions as utils
 from src.utils.LoopTimer import LoopTimer
 from src.utils.selector import select_path_from_dir
 
-feat_file_name = "rf_hl_lcpupbwuwb"  # output_name
+feat_file_name = "rf_balanced_pruned_notriggers_lcpupbwuwb"  # output_name
 
 path_to_db = "/media/norpheo/mySQL/db/ssorc"
 worddb_path = os.path.join(path_to_db, 'pandas', 'ml_word.pandas')
@@ -19,7 +19,7 @@ lemmadb_path = os.path.join(path_to_db, 'pandas', 'ml_lemma.pandas')
 feature_scipy_file = os.path.join(path_to_db, "features", f"{feat_file_name}_features.npz")  # output
 target_np_file = os.path.join(path_to_db, "features", f"{feat_file_name}_targets.npy")  # output
 
-#feature_set = "location concreteness wordunigramm wordbigramm posunigramm posbigramm".split()
+# feature_set = "location concreteness wordunigramm wordbigramm posunigramm posbigramm".split()
 feature_set = "location concreteness posunigram posbigram wordunigram wordbigram".split()
 # limit = math.inf
 limit = 5*3300
@@ -33,41 +33,17 @@ df = wordDF.join(posDF)
 
 dictionary_dir = os.path.join(path_to_db, 'dictionaries')
 model_dir = os.path.join(path_to_db, 'models')
-target_path = os.path.join(path_to_db, 'features', 'rf_targets_hl.pickle')
+target_path = os.path.join(path_to_db, 'features', 'rf_targets.pickle')
 
-word_dic = gensim.corpora.Dictionary.load(select_path_from_dir(dictionary_dir,
-                                                               phrase="Select Word Dict: ",
-                                                               suffix=".dict",
-                                                               preselection="pruned_word_ml.dict"))
-wordbigram_dic = gensim.corpora.Dictionary.load(select_path_from_dir(dictionary_dir,
-                                                                      phrase="Select Word-bigram Dict: ",
-                                                                      suffix=".dict",
-                                                                      preselection="pruned_wordbigramm_ml.dict"))
-pos_dic = gensim.corpora.Dictionary.load(select_path_from_dir(dictionary_dir,
-                                                              phrase="Select POS Dict: ",
-                                                              suffix=".dict",
-                                                              preselection="full_pos_ml.dict"))
-posbigram_dic = gensim.corpora.Dictionary.load(select_path_from_dir(dictionary_dir,
-                                                                     phrase="Select POS-bigram Dict: ",
-                                                                     suffix=".dict",
-                                                                     preselection="full_posbigramm_ml.dict"))
+word_dic = gensim.corpora.Dictionary.load(os.path.join(dictionary_dir, "pruned_word_lower_notriggers_pd.dict"))
+wordbigram_dic = gensim.corpora.Dictionary.load(os.path.join(dictionary_dir, "pruned_wordbigram_lower_pd.dict"))
+pos_dic = gensim.corpora.Dictionary.load(os.path.join(dictionary_dir, "pruned_pos_lower_pd.dict"))
+posbigram_dic = gensim.corpora.Dictionary.load(os.path.join(dictionary_dir, "pruned_posbigram_lower_pd.dict"))
 
-word_tfidf = gensim.models.TfidfModel.load(select_path_from_dir(model_dir,
-                                                                phrase="Select Word-TFIDF Model: ",
-                                                                suffix=".tfidf",
-                                                                preselection="pruned_word_ml.tfidf"))
-wordbigram_tfidf = gensim.models.TfidfModel.load(select_path_from_dir(model_dir,
-                                                                       phrase="Select Word-Bigram-TFIDF Model: ",
-                                                                       suffix=".tfidf",
-                                                                       preselection="pruned_wordbigramm_ml.tfidf"))
-pos_tfidf = gensim.models.TfidfModel.load(select_path_from_dir(model_dir,
-                                                               phrase="Select POS-TFIDF Model: ",
-                                                               suffix=".tfidf",
-                                                               preselection="full_pos_ml.tfidf"))
-posbigram_tfidf = gensim.models.TfidfModel.load(select_path_from_dir(model_dir,
-                                                                      phrase="Select POS-Bigram-TFIDF Model: ",
-                                                                      suffix=".tfidf",
-                                                                      preselection="full_posbigramm_ml.tfidf"))
+word_tfidf = gensim.models.TfidfModel.load(os.path.join(model_dir, "pruned_word_lower_notriggers_pd.tfidf"))
+wordbigram_tfidf = gensim.models.TfidfModel.load(os.path.join(model_dir, "pruned_wordbigram_lower_pd.tfidf"))
+pos_tfidf = gensim.models.TfidfModel.load(os.path.join(model_dir, "pruned_pos_lower_pd.tfidf"))
+posbigram_tfidf = gensim.models.TfidfModel.load(os.path.join(model_dir, "pruned_posbigram_lower_pd.tfidf"))
 
 word_vec_len = len(word_dic)
 wordbigram_vec_len = len(wordbigram_dic)

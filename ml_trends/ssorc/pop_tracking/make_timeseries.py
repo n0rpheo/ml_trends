@@ -3,72 +3,85 @@ import pickle
 import pandas as pd
 
 from src.modules.topic_modeling import TopicModelingGLDA
+from src.modules.topic_modeling import TopicModelingLDA
 from src.modules.abstract_parser import AbstractParser
 from src.utils.LoopTimer import LoopTimer
 
-from src.utils.selector import select_path_from_dir
 
 path_to_db = "/media/norpheo/mySQL/db/ssorc"
 path_to_dictionaries = os.path.join(path_to_db, 'dictionaries')
 path_to_models = os.path.join(path_to_db, 'models')
+worddb_path = os.path.join(path_to_db, 'pandas', 'ml_word.pandas')
+lemmadb_path = os.path.join(path_to_db, 'pandas', 'ml_lemma.pandas')
 otdb_path = os.path.join(path_to_db, 'pandas', 'ml_ot.pandas')
 posdb_path = os.path.join(path_to_db, 'pandas', 'ml_pos.pandas')
 yeardb_path = os.path.join(path_to_db, 'pandas', 'ml_year.pandas')
-popularity_data_frame_dist = os.path.join(path_to_db, "popularities", "df_500topics_dist_hl.pickle")  # output
-popularity_data_frame_top = os.path.join(path_to_db, "popularities", "df_500topics_top_hl.pickle")  # output
+popularity_data_frame_dist = os.path.join(path_to_db, "popularities",
+                                          "df_500topics_dist_balanced_pruned_tm_lemma_pruned.pickle")  # output
+popularity_data_frame_top = os.path.join(path_to_db, "popularities",
+                                         "df_500topics_top_balanced_pruned_tm_lemma_pruned.pickle")  # output
 
 
 print("Loading Panda DB")
+wordDF = pd.read_pickle(worddb_path)
+lemmaDF = pd.read_pickle(lemmadb_path)
 otDF = pd.read_pickle(otdb_path)
 posDF = pd.read_pickle(posdb_path)
 yearDF = pd.read_pickle(yeardb_path)
 print("Done Loading")
 
-dic_path = select_path_from_dir(path_to_dictionaries,
-                                phrase="Select Dictionary: ",
-                                suffix=".dict",
-                                preselection="pruned_ot_ml.dict")
-model_path = select_path_from_dir(path_to_models,
-                                  phrase="Select Topic Model: ",
-                                  suffix=".pickle",
-                                  preselection="tm_glda_model_500topics.pickle")
-
 print('Initialize Model')
-tm_model = TopicModelingGLDA(dic_path=dic_path,
-                             model_path=model_path)
-ap_model = AbstractParser(model_name='svm_rf_lcpupbwuwb_hl.pickle',
-                          word_dic=os.path.join(path_to_dictionaries, "pruned_word_ml.dict"),
-                          wordbigram_dic=os.path.join(path_to_dictionaries, "pruned_wordbigramm_ml.dict"),
-                          pos_dic=os.path.join(path_to_dictionaries, "full_pos_ml.dict"),
-                          posbigram_dic=os.path.join(path_to_dictionaries, "full_posbigramm_ml.dict"),
-                          word_tfidf=os.path.join(path_to_models, "pruned_word_ml.tfidf"),
-                          wordbigram_tfidf=os.path.join(path_to_models, "pruned_wordbigramm_ml.tfidf"),
-                          pos_tfidf=os.path.join(path_to_models, "full_pos_ml.tfidf"),
-                          posbigram_tfidf=os.path.join(path_to_models, "full_posbigramm_ml.tfidf"))
+#tm_model = TopicModelingGLDA(dic_path=os.path.join(path_to_dictionaries, "pruned_ot_ml.dict"),
+#                             model_path=os.path.join(path_to_models, "tm_glda_model_500topics.pickle"))
+tm_model = TopicModelingLDA(dic_path=os.path.join(path_to_dictionaries, "pruned_lemma_lower_pd.dict"),
+                            model_path=os.path.join(path_to_models, "tm_lda_500topics.pickle"))
+ap_model = AbstractParser(model_name='svm_rf_lcpupbwuwb_balanced_pruned_notriggers.pickle',
+                          word_dic=os.path.join(path_to_dictionaries, "pruned_word_lower_notriggers_pd.dict"),
+                          wordbigram_dic=os.path.join(path_to_dictionaries, "pruned_wordbigram_lower_pd.dict"),
+                          pos_dic=os.path.join(path_to_dictionaries, "pruned_pos_lower_pd.dict"),
+                          posbigram_dic=os.path.join(path_to_dictionaries, "pruned_posbigram_lower_pd.dict"),
+                          word_tfidf=os.path.join(path_to_models, "pruned_word_lower_notriggers_pd.tfidf"),
+                          wordbigram_tfidf=os.path.join(path_to_models, "pruned_wordbigram_lower_pd.tfidf"),
+                          pos_tfidf=os.path.join(path_to_models, "pruned_pos_lower_pd.tfidf"),
+                          posbigram_tfidf=os.path.join(path_to_models, "pruned_posbigram_lower_pd.tfidf"))
 
 num_topics = tm_model.num_topics()
+
 popularity_top = dict()
 popularity_dist = dict()
 segments_per_year = dict()
 rf_labels = set()
-df = otDF.join(posDF).join(yearDF)
+df = wordDF.join(otDF).join(posDF).join(yearDF).join(lemmaDF)
 
 lc = LoopTimer(update_after=50, avg_length=2000, target=len(df))
 for abstract_id, row in df.iterrows():
+    lc.update("Pops")
+
     year = row['year']
     ot_tokens = row['originalText'].split()
     ot_sentence_tokens = [sentence.split(" ") for sentence in row['originalText'].split("\t")]
 
+    num_sentences = len(ot_sentence_tokens)
+
+    # Filter for abstract length 10 to 50 sentences
+    if not (5 < num_sentences < 50):
+        continue
+
+    word_tokens = row['word'].split()
+    word_sentence_tokens = [sentence.split(" ") for sentence in row['word'].split("\t")]
+
+    lemma_tokens = row['lemma'].split()
+    lemma_sentence_tokens = [sentence.split(" ") for sentence in row['lemma'].split("\t")]
+
     pos_tokens = row['pos'].split()
     pos_sentence_tokens = [sentence.split(" ") for sentence in row['pos'].split("\t")]
 
-    results = ap_model.predict(ot_sentence_tokens, pos_sentence_tokens)
+    results = ap_model.predict(word_sentence_tokens, pos_sentence_tokens)
 
     if results is None:
         continue
 
     segments = dict()
-
     for idx, rhetfunc_label in enumerate(results):
         rf_labels.add(rhetfunc_label)
         if rhetfunc_label not in segments:
@@ -76,13 +89,19 @@ for abstract_id, row in df.iterrows():
         segments[rhetfunc_label].append(idx)
 
     num_segments = len(segments)
+
     if year not in segments_per_year:
         segments_per_year[year] = 0
     segments_per_year[year] += num_segments
 
     for segment_label in segments:
-        topic_dist = tm_model.get_topic_dist(ot_tokens)
+        segment_sentence_tokens = [lemma_sentence_tokens[i] for i in segments[segment_label]]
+        segment_tokens = [token for sentence in segment_sentence_tokens for token in sentence]
+        # segment_tokens = sum(segment_sentence_tokens, []) # maybe slower
+        topic_dist = tm_model.get_topic_dist(segment_tokens)
         top_topic = topic_dist.argmax()
+
+        print(sum(topic_dist))
 
         # Top Topic Popularity
         pop_key = (top_topic, segment_label, year)
@@ -96,7 +115,10 @@ for abstract_id, row in df.iterrows():
             if pop_key not in popularity_dist:
                 popularity_dist[pop_key] = 0
             popularity_dist[pop_key] += topic_dist[topic_id]
-    lc.update("Pops")
+            print(popularity_dist[pop_key])
+
+            exit()
+
 
 dates = pd.date_range('1990', '2020', freq='AS')
 

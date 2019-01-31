@@ -11,10 +11,10 @@ from src.utils.functions import print_scoring
 
 path_to_db = "/media/norpheo/mySQL/db/ssorc"
 
-feature_set_name = "rf_hl_lcpupbwuwb"
-reg_para = 150000
+feature_set_name = "rf_balanced_pruned_lcpupbwuwb"
+reg_para = 10000
 
-model_file_name = "svm_rf_lcpupbwuwb_hl.pickle"
+model_file_name = "svm_rf_lcpupbwuwb_balanced_pruned.pickle"
 
 
 feature_file = os.path.join(path_to_db, "features", f"{feature_set_name}_features.npz")

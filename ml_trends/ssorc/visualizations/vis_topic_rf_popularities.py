@@ -3,7 +3,8 @@ import os
 import pickle
 
 path_to_db = "/media/norpheo/mySQL/db/ssorc"
-df_file_path = os.path.join(path_to_db, "popularities", "df_500topics_dist_hl.pickle")
+df_file_path = os.path.join(path_to_db, "popularities",
+                            "df_500topics_dist_balanced_pruned_tm_lemma_pruned.pickle")
 
 with open(df_file_path, "rb") as pif:
     dataFrames = pickle.load(pif)
@@ -20,7 +21,8 @@ sum_dt = None
 
 plotDF = None
 
-for topic in nn_topic_list:
+#for topic in nn_topic_list:
+for topic in range(0, 10):
     df = dataFrames[topic]
     rf_labels = [key for key in df][:-2]
 

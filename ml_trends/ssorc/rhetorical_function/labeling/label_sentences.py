@@ -8,7 +8,7 @@ from src.utils.corpora import AnnotationStream
 from src.utils.LoopTimer import LoopTimer
 
 path_to_db = "/media/norpheo/mySQL/db/ssorc"
-target_path = os.path.join(path_to_db, 'features', 'rf_targets.pickle')
+target_path = os.path.join(path_to_db, 'features', 'rf_targets.pickle')  # output!!
 rules_filename = "learned_rules_big.json"
 
 rule_file_path = os.path.join(path_to_db, "pattern_matching", rules_filename)

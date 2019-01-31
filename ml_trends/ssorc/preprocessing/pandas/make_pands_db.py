@@ -70,7 +70,7 @@ for line in zip(ot_corpus, pos_corpus, word_corpus, lemma_corpus):
     ot_list.append("\t".join([" ".join(sentence) for sentence in ot_tokens]))
     word_list.append("\t".join([" ".join(sentence) for sentence in word_tokens]))
     pos_list.append("\t".join([" ".join(sentence) for sentence in pos_tokens]))
-    lemma_list.append("\t".join([" ".join(sentence) for sentence in pos_tokens]))
+    lemma_list.append("\t".join([" ".join(sentence) for sentence in lemma_tokens]))
     year_list.append(year)
     abstract_id_list.append(abstract_id)
     lc.update("Read Abstract")

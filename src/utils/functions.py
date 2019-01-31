@@ -149,7 +149,7 @@ def print_scoring(targets, prediction, avg_type="weighted"):
         rel = np.sum(conf_matrix, axis=1)[label_idx]
         ret = np.sum(conf_matrix, axis=0)[label_idx]
 
-        precision[label] = conf_matrix[label_idx][label_idx] / ret
+        precision[label] = conf_matrix[label_idx][label_idx] / ret if ret > 0 else 0
         recall[label] = conf_matrix[label_idx][label_idx] / rel
 
         print(f"{label}: {rel} | {ret}")

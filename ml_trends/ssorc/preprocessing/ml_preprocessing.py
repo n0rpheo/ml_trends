@@ -53,7 +53,6 @@ for filename in file_list[0:]:
                 outCitations = data['outCitations']
                 entities = data['entities']
 
-
                 elist = set()
                 for entity in entities:
                     elist.add(entity.lower())

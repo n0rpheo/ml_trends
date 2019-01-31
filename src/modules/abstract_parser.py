@@ -81,8 +81,6 @@ class AbstractParser:
         if 'posbigramm' in feature_set:
             self.vector_len += self.posbigramm_vec_len
 
-
-
     def predict(self, ot_tokens, pos_tokens):
         feature_vector = self.get_feature_vector(ot_tokens, pos_tokens)
         if feature_vector.shape[0] <= 1:

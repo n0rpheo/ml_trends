@@ -11,7 +11,7 @@ from src.utils.LoopTimer import LoopTimer
 from src.utils.functions import print_scoring
 
 path_to_db = "/media/norpheo/mySQL/db/ssorc"
-feature_file_path = os.path.join(path_to_db, 'popularities', 'pop_feat_hl.pandas')
+feature_file_path = os.path.join(path_to_db, 'popularities', 'pop_feat.pandas')
 
 print(feature_file_path)
 
@@ -43,6 +43,12 @@ for i in range(1, 10):
     reg_paras.append(10+i*10)
 for i in range(1, 10):
     reg_paras.append(100+i*100)
+for i in range(1, 10):
+    reg_paras.append(1000+i*1000)
+for i in range(1, 10):
+    reg_paras.append(10000+i*10000)
+for i in range(1, 10):
+    reg_paras.append(100000+i*100000)
 
 lc = LoopTimer(update_after=10, avg_length=100, target=len(reg_paras))
 
