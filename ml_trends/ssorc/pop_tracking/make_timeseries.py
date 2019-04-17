@@ -17,11 +17,11 @@ otdb_path = os.path.join(path_to_db, 'pandas', 'ml_ot.pandas')
 posdb_path = os.path.join(path_to_db, 'pandas', 'ml_pos.pandas')
 yeardb_path = os.path.join(path_to_db, 'pandas', 'ml_year.pandas')
 popularity_data_frame_dist = os.path.join(path_to_db, "popularities",
-                                          "df_500topics_dist_balanced_pruned_tm_lemma_pruned.pickle")  # output
+                                          "df_500topics_svmlin_dist_pruned_features_tm_lemma_pruned.pickle")  # output
 popularity_data_frame_top = os.path.join(path_to_db, "popularities",
-                                         "df_500topics_top_balanced_pruned_tm_lemma_pruned.pickle")  # output
+                                         "df_500topics_svmlin_top_pruned_features_tm_lemma_pruned.pickle")  # output
 
-
+print(popularity_data_frame_dist)
 print("Loading Panda DB")
 wordDF = pd.read_pickle(worddb_path)
 lemmaDF = pd.read_pickle(lemmadb_path)
@@ -31,30 +31,22 @@ yearDF = pd.read_pickle(yeardb_path)
 print("Done Loading")
 
 print('Initialize Model')
-#tm_model = TopicModelingGLDA(dic_path=os.path.join(path_to_dictionaries, "pruned_ot_ml.dict"),
-#                             model_path=os.path.join(path_to_models, "tm_glda_model_500topics.pickle"))
+
 tm_model = TopicModelingLDA(dic_path=os.path.join(path_to_dictionaries, "pruned_lemma_lower_pd.dict"),
                             model_path=os.path.join(path_to_models, "tm_lda_500topics.pickle"))
-ap_model = AbstractParser(model_name='svm_rf_lcpupbwuwb_balanced_pruned_notriggers.pickle',
-                          word_dic=os.path.join(path_to_dictionaries, "pruned_word_lower_notriggers_pd.dict"),
-                          wordbigram_dic=os.path.join(path_to_dictionaries, "pruned_wordbigram_lower_pd.dict"),
-                          pos_dic=os.path.join(path_to_dictionaries, "pruned_pos_lower_pd.dict"),
-                          posbigram_dic=os.path.join(path_to_dictionaries, "pruned_posbigram_lower_pd.dict"),
-                          word_tfidf=os.path.join(path_to_models, "pruned_word_lower_notriggers_pd.tfidf"),
-                          wordbigram_tfidf=os.path.join(path_to_models, "pruned_wordbigram_lower_pd.tfidf"),
-                          pos_tfidf=os.path.join(path_to_models, "pruned_pos_lower_pd.tfidf"),
-                          posbigram_tfidf=os.path.join(path_to_models, "pruned_posbigram_lower_pd.tfidf"))
+ap_model = AbstractParser(model_name='svm_lin_rf_pruned_features')
 
 num_topics = tm_model.num_topics()
 
 popularity_top = dict()
 popularity_dist = dict()
 segments_per_year = dict()
+segments_per_label_per_year = dict()
 rf_labels = set()
 df = wordDF.join(otDF).join(posDF).join(yearDF).join(lemmaDF)
 
 lc = LoopTimer(update_after=50, avg_length=2000, target=len(df))
-for abstract_id, row in df.iterrows():
+for count, (abstract_id, row) in enumerate(df.iterrows()):
     lc.update("Pops")
 
     year = row['year']
@@ -95,13 +87,17 @@ for abstract_id, row in df.iterrows():
     segments_per_year[year] += num_segments
 
     for segment_label in segments:
+        # Calculate how many segments occur for a specific label in a certain year
+        skey = (segment_label, year)
+        if skey not in segments_per_label_per_year:
+            segments_per_label_per_year[skey] = 0
+        segments_per_label_per_year[skey] += 1
+
         segment_sentence_tokens = [lemma_sentence_tokens[i] for i in segments[segment_label]]
         segment_tokens = [token for sentence in segment_sentence_tokens for token in sentence]
         # segment_tokens = sum(segment_sentence_tokens, []) # maybe slower
         topic_dist = tm_model.get_topic_dist(segment_tokens)
         top_topic = topic_dist.argmax()
-
-        print(sum(topic_dist))
 
         # Top Topic Popularity
         pop_key = (top_topic, segment_label, year)
@@ -115,37 +111,54 @@ for abstract_id, row in df.iterrows():
             if pop_key not in popularity_dist:
                 popularity_dist[pop_key] = 0
             popularity_dist[pop_key] += topic_dist[topic_id]
-            print(popularity_dist[pop_key])
-
-            exit()
 
 
-dates = pd.date_range('1990', '2020', freq='AS')
+dates = pd.date_range('1950', '2020', freq='AS')
 
 columns = list(rf_labels)
+for label in rf_labels:
+    columns.append(f"sp-{label}-py")
 columns.append("spy")
 columns.append("sum")
 
 dataFrames_dist = list()
 dataFrames_top = list()
 for topic in range(num_topics):
-    df_dist = pd.DataFrame(0, index=dates, columns=columns)
-    df_top = pd.DataFrame(0, index=dates, columns=columns)
+    df_dist = pd.DataFrame(0.0, index=dates, columns=columns)
+    df_top = pd.DataFrame(0.0, index=dates, columns=columns)
     for date in dates:
         year = date.year
         if year in segments_per_year:
             df_dist['spy'][date] = segments_per_year[year]
             df_top['spy'][date] = segments_per_year[year]
-        for rf_label in rf_labels:
-            key = (topic, rf_label, year)
-            if key in popularity_dist:
-                df_dist[rf_label][date] += popularity_dist[key]
-                df_dist['sum'][date] += popularity_dist[key]
-            if key in popularity_top:
-                df_top[rf_label][date] += popularity_top[key]
-                df_top['sum'][date] += popularity_top[key]
+
+            for rf_label in rf_labels:
+                skey = (rf_label, year)
+                key = (topic, rf_label, year)
+
+                if skey in segments_per_label_per_year:
+                    df_dist[f"sp-{rf_label}-py"][date] = segments_per_label_per_year[skey]
+                    df_top[f"sp-{rf_label}-py"][date] = segments_per_label_per_year[skey]
+
+                if key in popularity_dist:
+                    df_dist[rf_label][date] = popularity_dist[key] / segments_per_year[year]
+                    df_dist['sum'][date] += df_dist[rf_label][date]
+                if key in popularity_top:
+                    df_top[rf_label][date] = popularity_top[key] / segments_per_label_per_year[skey]
+                    df_top['sum'][date] += popularity_top[key] / segments_per_label_per_year[skey]
     dataFrames_dist.append(df_dist)
     dataFrames_top.append(df_top)
+
+print()
+
+for date in dates:
+    year_sum = 0.0
+    for topic in range(num_topics):
+        year_sum += dataFrames_dist[topic]['sum'][date]
+
+    print(f"{date}: {year_sum}")
+
+exit()
 
 with open(popularity_data_frame_dist, 'wb') as pop_file_dist:
     pickle.dump(dataFrames_dist, pop_file_dist)

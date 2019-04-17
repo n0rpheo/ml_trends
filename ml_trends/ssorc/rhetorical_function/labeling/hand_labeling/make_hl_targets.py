@@ -1,15 +1,11 @@
 import os
-import mysql.connector
-import operator
 import pickle
 
-import src.modules.pattern_matching as pm
-from src.utils.corpora import AnnotationStream
 from src.utils.LoopTimer import LoopTimer
 
 path_to_db = "/media/norpheo/mySQL/db/ssorc"
-target_path = os.path.join(path_to_db, 'features', 'rf_targets_hl.pickle')
-label_path = os.path.join(path_to_db, 'rf_hand_labels', 'labels_small.csv')
+target_path = os.path.join(path_to_db, 'features', 'rf_targets_hl_sanity.pickle')
+label_path = os.path.join(path_to_db, 'rf_hand_labels', 'sanity_data.csv')
 
 targets = dict()
 label_set = dict()

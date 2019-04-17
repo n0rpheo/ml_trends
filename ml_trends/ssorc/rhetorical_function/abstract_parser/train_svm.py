@@ -3,25 +3,23 @@ import pickle
 
 from sklearn.model_selection import train_test_split
 from sklearn import svm
-import scipy.sparse
-import numpy as np
 
-from src.utils.functions import print_scoring
+from src.utils.functions import Scoring
 
 
 path_to_db = "/media/norpheo/mySQL/db/ssorc"
 
-feature_set_name = "rf_balanced_pruned_lcpupbwuwb"
-reg_para = 10000
+feature_set_name = "rf_pruned_features"
+reg_para = 0.5
 
-model_file_name = "svm_rf_lcpupbwuwb_balanced_pruned.pickle"
+model_file_name = f"svm_lin_{feature_set_name}.pickle"
 
+with open(os.path.join(path_to_db, "features", f"{feature_set_name}.pickle"), "rb") as feature_file:
+    feature_dict = pickle.load(feature_file)
 
-feature_file = os.path.join(path_to_db, "features", f"{feature_set_name}_features.npz")
-target_file = os.path.join(path_to_db, "features", f"{feature_set_name}_targets.npy")
-
-all_features = scipy.sparse.load_npz(feature_file)
-all_targets = np.load(target_file)
+all_features = feature_dict["features"]
+all_targets = feature_dict["targets"]
+settings = feature_dict["settings"]
 
 learning_features, holdback_features, learning_targets, holdback_targets = train_test_split(all_features,
                                                                                             all_targets,
@@ -32,14 +30,29 @@ learning_features, holdback_features, learning_targets, holdback_targets = train
 print("Learning Feature-Vector-Shape: " + str(learning_features.shape))
 print("Holdback Feature-Vector-Shape: " + str(holdback_features.shape))
 
-best_model = svm.SVC(decision_function_shape='ovo', C=reg_para, kernel='rbf')
+#best_model = svm.SVC(decision_function_shape='ovo',
+#                     C=reg_para,
+#                     kernel='rbf',
+#                     gamma='auto',
+#                     verbose=1)
+best_model = svm.SVC(kernel="linear",
+                     C=reg_para,
+                     decision_function_shape='ovo',
+                     verbose=1)
 best_model.fit(learning_features, learning_targets)
 
+classifier = dict()
+classifier["model"] = best_model
+classifier["settings"] = settings
+
+print("\n\n")
 print('Save Model')
 with open(os.path.join(path_to_db, "models", model_file_name), "wb") as model_file:
-    pickle.dump(best_model, model_file)
+    pickle.dump(classifier, model_file)
 
 if holdback_features.shape[0] > 0:
     print('Test Model')
     prediction = best_model.predict(holdback_features)
-    print_scoring(holdback_targets, prediction)
+
+    scores = Scoring(holdback_targets, prediction)
+    scores.print()

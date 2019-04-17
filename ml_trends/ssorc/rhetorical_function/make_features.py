@@ -7,20 +7,38 @@ import pandas as pd
 
 import src.utils.functions as utils
 from src.utils.LoopTimer import LoopTimer
-from src.utils.selector import select_path_from_dir
 
-feat_file_name = "rf_balanced_pruned_notriggers_lcpupbwuwb"  # output_name
 
 path_to_db = "/media/norpheo/mySQL/db/ssorc"
+
+feat_file_name = "rf_pruned_features"  # output_name
+
+target_path = os.path.join(path_to_db, 'features', 'rf_targets.pickle')  # Target Input
+
 worddb_path = os.path.join(path_to_db, 'pandas', 'ml_word.pandas')
 posdb_path = os.path.join(path_to_db, 'pandas', 'ml_pos.pandas')
-lemmadb_path = os.path.join(path_to_db, 'pandas', 'ml_lemma.pandas')
 
-feature_scipy_file = os.path.join(path_to_db, "features", f"{feat_file_name}_features.npz")  # output
-target_np_file = os.path.join(path_to_db, "features", f"{feat_file_name}_targets.npy")  # output
+dictionary_dir = os.path.join(path_to_db, 'dictionaries')
+model_dir = os.path.join(path_to_db, 'models')
 
-# feature_set = "location concreteness wordunigramm wordbigramm posunigramm posbigramm".split()
-feature_set = "location concreteness posunigram posbigram wordunigram wordbigram".split()
+feature_file_path = os.path.join(path_to_db, "features", f"{feat_file_name}.pickle")  # OUTPUT!!!
+
+settings = dict()
+settings["feature_set"] = ["location",
+                           "concreteness",
+                           "posunigram",
+                           "posbigram",
+                           "wordunigram",
+                           "wordbigram"]
+settings["word_dic"] = os.path.join(dictionary_dir, "pruned_word_lower_pd.dict")
+settings["wordbigram_dic"] = os.path.join(dictionary_dir, "pruned_wordbigram_lower_pd.dict")
+settings["pos_dic"] = os.path.join(dictionary_dir, "pruned_pos_lower_pd.dict")
+settings["posbigram_dic"] = os.path.join(dictionary_dir, "pruned_posbigram_lower_pd.dict")
+settings["word_tfidf"] = os.path.join(model_dir, "pruned_word_lower_pd.tfidf")
+settings["wordbigram_tfidf"] = os.path.join(model_dir, "pruned_wordbigram_lower_pd.tfidf")
+settings["pos_tfidf"] = os.path.join(model_dir, "pruned_pos_lower_pd.tfidf")
+settings["posbigram_tfidf"] = os.path.join(model_dir, "pruned_posbigram_lower_pd.tfidf")
+
 # limit = math.inf
 limit = 5*3300
 
@@ -28,22 +46,17 @@ print("Loading Panda DB")
 wordDF = pd.read_pickle(worddb_path)
 posDF = pd.read_pickle(posdb_path)
 print("Done Loading")
-
 df = wordDF.join(posDF)
 
-dictionary_dir = os.path.join(path_to_db, 'dictionaries')
-model_dir = os.path.join(path_to_db, 'models')
-target_path = os.path.join(path_to_db, 'features', 'rf_targets.pickle')
+word_dic = gensim.corpora.Dictionary.load(settings["word_dic"])
+wordbigram_dic = gensim.corpora.Dictionary.load(settings["wordbigram_dic"])
+pos_dic = gensim.corpora.Dictionary.load(settings["pos_dic"])
+posbigram_dic = gensim.corpora.Dictionary.load(settings["posbigram_dic"])
 
-word_dic = gensim.corpora.Dictionary.load(os.path.join(dictionary_dir, "pruned_word_lower_notriggers_pd.dict"))
-wordbigram_dic = gensim.corpora.Dictionary.load(os.path.join(dictionary_dir, "pruned_wordbigram_lower_pd.dict"))
-pos_dic = gensim.corpora.Dictionary.load(os.path.join(dictionary_dir, "pruned_pos_lower_pd.dict"))
-posbigram_dic = gensim.corpora.Dictionary.load(os.path.join(dictionary_dir, "pruned_posbigram_lower_pd.dict"))
-
-word_tfidf = gensim.models.TfidfModel.load(os.path.join(model_dir, "pruned_word_lower_notriggers_pd.tfidf"))
-wordbigram_tfidf = gensim.models.TfidfModel.load(os.path.join(model_dir, "pruned_wordbigram_lower_pd.tfidf"))
-pos_tfidf = gensim.models.TfidfModel.load(os.path.join(model_dir, "pruned_pos_lower_pd.tfidf"))
-posbigram_tfidf = gensim.models.TfidfModel.load(os.path.join(model_dir, "pruned_posbigram_lower_pd.tfidf"))
+word_tfidf = gensim.models.TfidfModel.load(settings["word_tfidf"])
+wordbigram_tfidf = gensim.models.TfidfModel.load(settings["wordbigram_tfidf"])
+pos_tfidf = gensim.models.TfidfModel.load(settings["pos_tfidf"])
+posbigram_tfidf = gensim.models.TfidfModel.load(settings["posbigram_tfidf"])
 
 word_vec_len = len(word_dic)
 wordbigram_vec_len = len(wordbigram_dic)
@@ -68,6 +81,8 @@ feature_col = []
 
 vector_len = 0
 row_count = 0
+
+feature_set = settings['feature_set']
 
 if 'location' in feature_set:
     vector_len += 1
@@ -351,5 +366,11 @@ print()
 print(feature_vector.shape)
 print(target_vector.shape)
 
-scipy.sparse.save_npz(feature_scipy_file, feature_vector)
-np.save(target_np_file, target_vector)
+feature_dict = dict()
+
+feature_dict["features"] = feature_vector
+feature_dict["targets"] = target_vector
+feature_dict["settings"] = settings
+
+with open(feature_file_path, "wb") as feature_file:
+    pickle.dump(feature_dict, feature_file)

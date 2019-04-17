@@ -12,44 +12,33 @@ from src.utils.functions import append_vec2data
 
 
 class AbstractParser:
-    def __init__(self,
-                 model_name,
-                 word_dic,
-                 wordbigram_dic,
-                 pos_dic,
-                 posbigram_dic,
-                 word_tfidf,
-                 wordbigram_tfidf,
-                 pos_tfidf,
-                 posbigram_tfidf,
-                 feature_set=["location",
-                              "concreteness",
-                              "posunigramm",
-                              "posbigramm",
-                              "wordunigramm",
-                              "wordbigramm"]):
-        self.feature_set = feature_set
+    def __init__(self, model_name):
 
         path_to_db = "/media/norpheo/mySQL/db/ssorc"
-        model_dir = os.path.join(path_to_db, 'models')
 
-        with open(os.path.join(model_dir, model_name), 'rb') as model_file:
-            self.svm_model = pickle.load(model_file)
+        with open(os.path.join(path_to_db, "models", f"{model_name}.pickle"), "rb") as feature_file:
+            classifier_dict = pickle.load(feature_file)
 
-        self.word_dic = gensim.corpora.Dictionary.load(word_dic)
-        self.wordbigramm_dic = gensim.corpora.Dictionary.load(wordbigram_dic)
-        self.pos_dic = gensim.corpora.Dictionary.load(pos_dic)
-        self.posbigramm_dic = gensim.corpora.Dictionary.load(posbigram_dic)
+        settings = classifier_dict["settings"]
 
-        self.word_tfidf = gensim.models.TfidfModel.load(word_tfidf)
-        self.wordbigramm_tfidf = gensim.models.TfidfModel.load(wordbigram_tfidf)
-        self.pos_tfidf = gensim.models.TfidfModel.load(pos_tfidf)
-        self.posbigramm_tfidf = gensim.models.TfidfModel.load(posbigram_tfidf)
+        self.feature_set = settings['feature_set']
+
+        self.model = classifier_dict['model']
+
+        self.word_dic = gensim.corpora.Dictionary.load(settings["word_dic"])
+        self.wordbigram_dic = gensim.corpora.Dictionary.load(settings["wordbigram_dic"])
+        self.pos_dic = gensim.corpora.Dictionary.load(settings["pos_dic"])
+        self.posbigram_dic = gensim.corpora.Dictionary.load(settings["posbigram_dic"])
+
+        self.word_tfidf = gensim.models.TfidfModel.load(settings["word_tfidf"])
+        self.wordbigram_tfidf = gensim.models.TfidfModel.load(settings["wordbigram_tfidf"])
+        self.pos_tfidf = gensim.models.TfidfModel.load(settings["pos_tfidf"])
+        self.posbigram_tfidf = gensim.models.TfidfModel.load(settings["posbigram_tfidf"])
 
         self.word_vec_len = len(self.word_dic)
-        self.wordbigramm_vec_len = len(self.wordbigramm_dic)
+        self.wordbigram_vec_len = len(self.wordbigram_dic)
         self.pos_vec_len = len(self.pos_dic)
-        self.posbigramm_vec_len = len(self.posbigramm_dic)
+        self.posbigram_vec_len = len(self.posbigram_dic)
 
         conc_file_path = os.path.join(path_to_db, 'external', 'concreteness_ratings.txt')
         with open(conc_file_path) as conc_file:
@@ -63,46 +52,32 @@ class AbstractParser:
 
         self.vector_len = 0
 
-        if 'location' in feature_set:
+        if 'location' in self.feature_set:
             self.vector_len += 1
 
-        if 'concreteness' in feature_set:
+        if 'concreteness' in self.feature_set:
             self.vector_len += 3
 
-        if 'wordunigramm' in feature_set:
+        if 'wordunigram' in self.feature_set:
             self.vector_len += self.word_vec_len
 
-        if 'wordbigramm' in feature_set:
-            self.vector_len += self.wordbigramm_vec_len
+        if 'wordbigram' in self.feature_set:
+            self.vector_len += self.wordbigram_vec_len
 
-        if 'posunigramm' in feature_set:
+        if 'posunigram' in self.feature_set:
             self.vector_len += self.pos_vec_len
 
-        if 'posbigramm' in feature_set:
-            self.vector_len += self.posbigramm_vec_len
+        if 'posbigram' in self.feature_set:
+            self.vector_len += self.posbigram_vec_len
+
+        print(self.vector_len)
 
     def predict(self, ot_tokens, pos_tokens):
         feature_vector = self.get_feature_vector(ot_tokens, pos_tokens)
         if feature_vector.shape[0] <= 1:
             return None
-        prediction = self.svm_model.predict(feature_vector)
+        prediction = self.model.predict(feature_vector)
         return prediction
-
-    def predict_abstract(self, abstract_id):
-        abstracts = [abstract_id]
-        word_corpus = TokenSentenceStream(abstracts=abstracts,
-                                          token_type='word',
-                                          token_cleaned=0,
-                                          output=None,
-                                          lower=True)
-
-        pos_corpus = TokenSentenceStream(abstracts=abstracts,
-                                         token_type='pos',
-                                         token_cleaned=0,
-                                         output=None,
-                                         lower=True)
-
-        return self.predict(word_corpus, pos_corpus)
 
     def get_feature_vector(self, word_corpus, pos_corpus):
 
@@ -114,19 +89,19 @@ class AbstractParser:
             sent_id += 1
             max_sent += 1
 
-            wordbigramm = makeBigrams(words)
-            posbigramm = makeBigrams(pos)
+            wordbigram = makeBigrams(words)
+            posbigram = makeBigrams(pos)
 
             word_bow = self.word_dic.doc2bow(words)
             vec_word_tfidf = self.word_tfidf[word_bow]
-            wordbigramm_bow = self.wordbigramm_dic.doc2bow(wordbigramm)
-            vec_wordbigramm_tfidf = self.wordbigramm_tfidf[wordbigramm_bow]
+            wordbigram_bow = self.wordbigram_dic.doc2bow(wordbigram)
+            vec_wordbigram_tfidf = self.wordbigram_tfidf[wordbigram_bow]
 
             pos_bow = self.pos_dic.doc2bow(pos)
             vec_pos_tfidf = self.pos_tfidf[pos_bow]
 
-            posbigramm_bow = self.posbigramm_dic.doc2bow(posbigramm)
-            vec_posbigramm_tfidf = self.posbigramm_tfidf[posbigramm_bow]
+            posbigram_bow = self.posbigram_dic.doc2bow(posbigram)
+            vec_posbigram_tfidf = self.posbigram_tfidf[posbigram_bow]
 
             # Collecting Concreteness-Ratings
             cr_min = 1000
@@ -158,9 +133,9 @@ class AbstractParser:
             sent_info['cr_min_feature'] = cr_min_feature
             sent_info['cr_mean_feature'] = cr_mean_feature
             sent_info['vec_word_tfidf'] = vec_word_tfidf
-            sent_info['vec_wordbigramm_tfidf'] = vec_wordbigramm_tfidf
+            sent_info['vec_wordbigram_tfidf'] = vec_wordbigram_tfidf
             sent_info['vec_pos_tfidf'] = vec_pos_tfidf
-            sent_info['vec_posbigramm_tfidf'] = vec_posbigramm_tfidf
+            sent_info['vec_posbigram_tfidf'] = vec_posbigram_tfidf
             sent_info['sent_id'] = sent_id
             sent_infos.append(sent_info)
 
@@ -200,7 +175,7 @@ class AbstractParser:
                 feature_data_array.append(cr_mean_feature)
                 vector_offset += 3
 
-            if 'wordunigramm' in self.feature_set:
+            if 'wordunigram' in self.feature_set:
                 append_vec2data(feature_data['vec_word_tfidf'],
                                 feature_data_array,
                                 feature_row,
@@ -209,16 +184,16 @@ class AbstractParser:
                                 vector_offset)
                 vector_offset += self.word_vec_len
 
-            if 'wordbigramm' in self.feature_set:
-                append_vec2data(feature_data['vec_wordbigramm_tfidf'],
+            if 'wordbigram' in self.feature_set:
+                append_vec2data(feature_data['vec_wordbigram_tfidf'],
                                 feature_data_array,
                                 feature_row,
                                 feature_col,
                                 row_count,
                                 vector_offset)
-                vector_offset += self.wordbigramm_vec_len
+                vector_offset += self.wordbigram_vec_len
 
-            if 'posunigramm' in self.feature_set:
+            if 'posunigram' in self.feature_set:
                 append_vec2data(feature_data['vec_pos_tfidf'],
                                 feature_data_array,
                                 feature_row,
@@ -227,14 +202,14 @@ class AbstractParser:
                                 vector_offset)
                 vector_offset += self.pos_vec_len
 
-            if 'posbigramm' in self.feature_set:
-                append_vec2data(feature_data['vec_posbigramm_tfidf'],
+            if 'posbigram' in self.feature_set:
+                append_vec2data(feature_data['vec_posbigram_tfidf'],
                                 feature_data_array,
                                 feature_row,
                                 feature_col,
                                 row_count,
                                 vector_offset)
-                vector_offset += self.posbigramm_vec_len
+                vector_offset += self.posbigram_vec_len
 
             row_count += 1
 

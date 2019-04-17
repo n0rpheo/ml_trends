@@ -10,6 +10,8 @@ from timeit import default_timer as timer
 from sklearn.externals import joblib
 import sklearn.metrics as skmetrics
 
+from prettytable import PrettyTable
+
 
 def check_string_for_english(input_text):
     try:
@@ -131,36 +133,94 @@ def lookahead(iterable):
     yield last, False
 
 
-def print_scoring(targets, prediction, avg_type="weighted"):
-    labels = list(set(targets))
-    precision = dict()
-    recall = dict()
+class Scoring:
+    def __init__(self, targets, prediction, avg_type="weighted"):
+        self.targets = targets
+        self.prediction = prediction
+        self.avg_type = avg_type
 
-    conf_matrix = skmetrics.confusion_matrix(targets, prediction, labels=labels)
-    prec_score = skmetrics.precision_score(targets, prediction, labels=labels, average=avg_type)
-    accuracy_score = skmetrics.accuracy_score(targets, prediction)
-    recall_score = skmetrics.recall_score(targets, prediction, average=avg_type)
-    f1_score = skmetrics.f1_score(targets, prediction, average=avg_type)
+    def print(self):
+        labels = list(set(self.targets))
 
-    print("Occurences of Labels (Relevant | Retrieved)")
-    for label in labels:
-        label_idx = labels.index(label)
+        conf_matrix = skmetrics.confusion_matrix(self.targets, self.prediction, labels=labels)
+        prec_score = skmetrics.precision_score(self.targets, self.prediction, labels=labels, average=self.avg_type)
+        accuracy_score = skmetrics.accuracy_score(self.targets, self.prediction)
+        recall_score = skmetrics.recall_score(self.targets, self.prediction, average=self.avg_type)
+        f1_score = skmetrics.f1_score(self.targets, self.prediction, average=self.avg_type)
 
-        rel = np.sum(conf_matrix, axis=1)[label_idx]
-        ret = np.sum(conf_matrix, axis=0)[label_idx]
+        print_matrix = list()
 
-        precision[label] = conf_matrix[label_idx][label_idx] / ret if ret > 0 else 0
-        recall[label] = conf_matrix[label_idx][label_idx] / rel
+        for label in labels:
+            label_idx = labels.index(label)
 
-        print(f"{label}: {rel} | {ret}")
+            rel = np.sum(conf_matrix, axis=1)[label_idx]
+            ret = np.sum(conf_matrix, axis=0)[label_idx]
 
-    print()
-    print("     \tPreci | Recall")
-    for label in labels:
-        print(f"{str(label)[0:5]}:\t{str(precision[label])[0:5]} | {str(recall[label])[0:5]}")
+            precision = conf_matrix[label_idx][label_idx] / ret if ret > 0 else 0
+            recall = conf_matrix[label_idx][label_idx] / rel
 
-    print()
-    print(f"Accuracy:  {accuracy_score}")
-    print(f"Precision: {prec_score}")
-    print(f"Recall:    {recall_score}")
-    print(f"F1-Score:  {f1_score}")
+            print_matrix.append([label, ret, rel, str(precision)[0:5], str(recall)[0:5]])
+
+        p = PrettyTable()
+        p.field_names = ["Label", "Retrieved", "Relevant", "Precision", "Recall"]
+
+        for row in print_matrix:
+            p.add_row(row)
+
+        print(p.get_string(header=True, border=True))
+        print()
+
+        p2 = PrettyTable()
+        p2.add_row(["Accuracy", str(accuracy_score)[0:5]])
+        p2.add_row(["Precision", str(prec_score)[0:5]])
+        p2.add_row(["Recall", str(recall_score)[0:5]])
+        p2.add_row(["F1-Score", str(f1_score)[0:5]])
+
+        print(p2.get_string(header=False, border=True))
+
+    def save(self, path, title, open_mode='w'):
+        labels = list(set(self.targets))
+        precision = dict()
+        recall = dict()
+        rel_dict = dict()
+        ret_dict = dict()
+
+        conf_matrix = skmetrics.confusion_matrix(self.targets, self.prediction, labels=labels)
+        prec_score = skmetrics.precision_score(self.targets, self.prediction, labels=labels, average=self.avg_type)
+        accuracy_score = skmetrics.accuracy_score(self.targets, self.prediction)
+        recall_score = skmetrics.recall_score(self.targets, self.prediction, average=self.avg_type)
+        f1_score = skmetrics.f1_score(self.targets, self.prediction, average=self.avg_type)
+
+        for label in labels:
+            label_idx = labels.index(label)
+
+            rel = np.sum(conf_matrix, axis=1)[label_idx]
+            ret = np.sum(conf_matrix, axis=0)[label_idx]
+
+            precision[label] = conf_matrix[label_idx][label_idx] / ret if ret > 0 else 0
+            recall[label] = conf_matrix[label_idx][label_idx] / rel
+
+            rel_dict[label] = rel
+            ret_dict[label] = ret
+
+        if open_mode == 'a':
+            write_string = "\n\n\n"
+        else:
+            write_string = ""
+
+        write_string += f"{title}\n\n"
+
+        write_string += f"\tLabel\tRetrieved\tRelevant\tPrecision\tRecall\n"
+        for label in labels:
+            write_string += f"\t{str(label)[0:5]}\t{str(ret_dict[label])[0:5]}\t{str(rel_dict[label])[0:5]}\t"
+            write_string += f"{str(precision[label])[0:5]}\t{str(recall[label])[0:5]}\n"
+
+        write_string += f"\n"
+        write_string += f"\tAccuracy\t{str(accuracy_score)[0:5]}\n"
+        write_string += f"\tPrecision\t{str(prec_score)[0:5]}\n"
+        write_string += f"\tRecall\t{str(recall_score)[0:5]}\n"
+        write_string += f"\tF1-Score\t{str(f1_score)[0:5]}\n"
+
+        with open(path, mode=open_mode) as write_file:
+            write_file.write(write_string)
+

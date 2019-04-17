@@ -65,8 +65,8 @@ for abstract_id, annotation in annotations:
 
             label_key = (abstract_id, sent_id)
 
-            if pred is None:
-                continue
+        if pred is None:
+            continue
 
         targets[label_key] = pred
 

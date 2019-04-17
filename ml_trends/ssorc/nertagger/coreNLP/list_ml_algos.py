@@ -11,7 +11,6 @@ path_to_ml_algos_save1 = os.path.join(path_to_ner, "ml_algos.dict")
 path_to_ml_algos_save2 = os.path.join(path_to_ner, "ml_algos_new.dict")
 
 
-
 with open(path_to_ml_algos_save1, "rb") as ml_algos_file:
     ml_algos = pickle.load(ml_algos_file)
 

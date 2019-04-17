@@ -3,6 +3,8 @@ import numpy as np
 import random
 import pandas as pd
 
+from numpy.linalg import norm
+
 
 class KSpectralCluster:
     def __init__(self, time_interval, trend_types=['up', 'even', 'down']):
@@ -52,11 +54,9 @@ class KSpectralCluster:
 
 def distance(x, y):
 
-    alpha = np.dot(x, y)/math.pow(l2norm(y, 1), 2)
+    alpha = np.dot(x, y)/math.pow(norm(y), 2)
 
-    distance = l2norm(np.subtract(x, np.multiply(y, alpha))) / l2norm(x)
-
-    return distance
+    return norm(np.subtract(x, np.multiply(y, alpha))) / norm(x)
 
 
 def l2norm(x, tau=1):

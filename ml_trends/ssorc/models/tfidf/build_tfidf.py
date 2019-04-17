@@ -2,17 +2,18 @@ import os
 import gensim
 
 path_to_db = "/media/norpheo/mySQL/db/ssorc"
-token_types = ["word",
+token_types = [#"word",
                #"wordbigram",
                #"pos",
                #"posbigram",
                #"lemma",
                #"lemmabigram",
-               #"originalText",
-               #"originalTextbigram"
+               #"coarse_pos",
+               #"coarse_posbigram",
+                "merged_word"
                ]
-dic_paths = [os.path.join(path_to_db, "dictionaries", f"pruned_{toty}_lower_notriggers_pd.dict") for toty in token_types]  # input
-model_paths = [os.path.join(path_to_db, "models", f"pruned_{toty}_lower_notriggers_pd.tfidf") for toty in token_types]  # output
+dic_paths = [os.path.join(path_to_db, "dictionaries", f"aiml_full_ner_{toty}.dict") for toty in token_types]  # input
+model_paths = [os.path.join(path_to_db, "models", f"aiml_full_ner_{toty}.tfidf") for toty in token_types]  # output
 
 
 for i in range(len(token_types)):

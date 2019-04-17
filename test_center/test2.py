@@ -1,65 +1,72 @@
 import os
 import pickle
+import spacy
+from spacy.matcher import Matcher
+from spacy.tokens import Doc
 
-path_to_ner = "/media/norpheo/mySQL/db/ssorc/NER"
-
-# Model 1 Files
-path_to_ml_algos_save1 = os.path.join(path_to_ner, "ml_algos.dict")
-path_to_ml_algo_abstract_save1 = os.path.join(path_to_ner, "ml_algo_abstract.pickle")
-path_to_skip_list1 = os.path.join(path_to_ner, "skip_list.pickle")
-
-# Model 2 Files
-path_to_ml_algos_save2 = os.path.join(path_to_ner, "ml_algos_new.dict")
-path_to_ml_algo_abstract_save2 = os.path.join(path_to_ner, "ml_algo_abstract_new.pickle")
-path_to_skip_list2 = os.path.join(path_to_ner, "skip_list_new.pickle")
+import pandas as pd
+from src.utils.LoopTimer import LoopTimer
 
 
-with open(path_to_skip_list1, "rb") as skip_list_file:
-    skip_list_old = pickle.load(skip_list_file) # set
+def is_sublist(ls1, ls2):
+    for word_b_idx in range(len(ls2) - len(ls1) + 1):
+        for word_a_idx in range(len(ls1)):
+            word_a = ls1[word_a_idx]
+            word_b = ls2[word_b_idx + word_a_idx]
 
-with open(path_to_ml_algo_abstract_save1, "rb") as algo_abstract_file:
-    ml_algo_abstract_old = pickle.load(algo_abstract_file) # set
+            if word_a != word_b:
+                break
+        else:
+            return True
+    return False
 
-with open(path_to_ml_algos_save1, "rb") as ml_algos_file:
-    ml_algos_old = pickle.load(ml_algos_file) # dict
+path_to_db = "/media/norpheo/mySQL/db/ssorc"
+path_to_annotations = os.path.join(path_to_db, "annotations")
+pandas_path = os.path.join(path_to_db, "pandas")
+path_to_ner = os.path.join(path_to_db, "NER")
 
-with open(path_to_skip_list2, "rb") as skip_list_file:
-    skip_list_new = pickle.load(skip_list_file) # set
+nlp = spacy.load(os.path.join(path_to_db, "models", "en_core_web_sm_nertrained"))
+vocab = nlp.vocab.from_disk(os.path.join(path_to_db, "dictionaries", "spacy.vocab"))
 
-with open(path_to_ml_algo_abstract_save2, "rb") as algo_abstract_file:
-    ml_algo_abstract_new = pickle.load(algo_abstract_file) # set
+with open(os.path.join(path_to_ner, "ml_algos.txt"), "r") as handle:
+    ml_algos = set()
+    ml_algos_list = list()
+    for line in handle:
+        algo = line.strip().lower()
+        if algo not in ml_algos:
+            ml_algos.add(algo)
+            ml_algos_list.append(algo.split(" "))
 
-with open(path_to_ml_algos_save2, "rb") as ml_algos_file:
-    ml_algos_new = pickle.load(ml_algos_file) # dict
+print(len(ml_algos))
 
-algos_old = set()
-for algo in ml_algos_old:
-    algos_old.add(algo.lower())
+for i in range(len(ml_algos_list)):
+    for j in range(len(ml_algos_list)):
+        if i != j:
+            algo1 = ml_algos_list[i]
+            algo2 = ml_algos_list[j]
 
-algos_new = set()
-for algo in ml_algos_new:
-    algos_new.add(algo.lower())
+            if is_sublist(algo1, algo2):
+                algo1 = ' '.join(algo1)
+                algo2 = ' '.join(algo2)
+                ml_algos.discard(algo2)
 
-algo_new_wo_old = algos_new - algos_old
-abstract_new_wo_old = ml_algo_abstract_new - ml_algo_abstract_old
+print(len(ml_algos))
 
-abs_new_inter_skip_old = ml_algo_abstract_new.intersection(skip_list_old)
-abs_old_inter_skip_new = ml_algo_abstract_old.intersection(skip_list_new)
 
-number_new_has_found = len(abs_old_inter_skip_new - ml_algo_abstract_old)
-number_old_has_found = len(abs_new_inter_skip_old - ml_algo_abstract_new)
+matcher = Matcher(vocab)
+for ml_algo in ml_algos:
+    doc = nlp(ml_algo)
+    pattern = [{"LOWER": token.lower_} for token in doc]
+    pattern_name = "".join([entity["LOWER"] for entity in pattern])
+    matcher.add(pattern_name, None, pattern)
 
-print(f"Alte Skip-Liste: {len(skip_list_old)}")
-print(f"Neue Skip-Liste: {len(skip_list_new)}")
+doc = nlp("This is a support vector Machines.")
 
-print(f"Alte Abstract-Liste: {len(ml_algo_abstract_old)}")
-print(f"Neue Abstract-Liste: {len(ml_algo_abstract_new)}")
+matches = matcher(doc)
 
-print(f"Anteil Alte Liste: {(len(ml_algo_abstract_old) / len(skip_list_old))}")
-print(f"Anteil Neue Liste: {(len(ml_algo_abstract_new) / len(skip_list_new))}")
-
-print(f"Anzahl Algorithmen, die Neu mehr hat als Alt: {len(algo_new_wo_old)}")
-print(f"Anzahl Abstracts, die Neu mehr hat als Alt: {len(abstract_new_wo_old)}")
-
-print(f"Anzahl Abstracts, die Neu gefunden hat, Alt aber nicht: {number_new_has_found}")
-print(f"Anzahl Abstracts, die Alt gefunden hat, Neu aber nicht: {number_old_has_found}")
+for match in matches:
+    match_id = match[0]
+    match_start = match[1]
+    match_end = match[2]
+    print(f"{match_id} - {match_start} - {match_end}")
+    print(doc[match[1]:match[2]])

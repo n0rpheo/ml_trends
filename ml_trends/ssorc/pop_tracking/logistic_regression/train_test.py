@@ -8,10 +8,10 @@ from sklearn.linear_model import LogisticRegression
 
 from src.utils.LoopTimer import LoopTimer
 
-from src.utils.functions import print_scoring
+from src.utils.functions import Scoring
 
 path_to_db = "/media/norpheo/mySQL/db/ssorc"
-feature_file_path = os.path.join(path_to_db, 'popularities', 'pop_feat.pandas')
+feature_file_path = os.path.join(path_to_db, 'popularities', 'pop_feat_late.pandas')
 
 print(feature_file_path)
 
@@ -87,5 +87,9 @@ lr_model = LogisticRegression(random_state=0,
 lr_model.fit(learning_features, learning_targets)
 prediction = lr_model.predict(holdback_features)
 
+scoring = Scoring(holdback_targets, prediction)
 
-print_scoring(holdback_targets, prediction)
+#scoring.print()
+scoring.save(path="/media/norpheo/Daten/Masterarbeit/thesis/Results/sheets/pop_tracking.tsv",
+             title=f"Pop-Tracking Late, LR @ {best_para}",
+             open_mode='a')

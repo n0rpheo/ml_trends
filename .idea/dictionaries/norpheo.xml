@@ -1,10 +1,13 @@
 <component name="ProjectDictionaryState">
   <dictionary name="norpheo">
     <words>
+      <w>adaboost</w>
+      <w>aiml</w>
       <w>algo</w>
       <w>algos</w>
       <w>anno</w>
       <w>bigram</w>
+      <w>blastfile</w>
       <w>conc</w>
       <w>cratings</w>
       <w>dbcon</w>
@@ -13,6 +16,7 @@
       <w>docdocstream</w>
       <w>docstream</w>
       <w>elist</w>
+      <w>filerange</w>
       <w>findphrasesbyrules</w>
       <w>findrulesbyphrase</w>
       <w>flength</w>
@@ -39,10 +43,14 @@
       <w>posdb</w>
       <w>posunigramm</w>
       <w>pred</w>
+      <w>retokenized</w>
       <w>rhetfunc</w>
       <w>scipy</w>
+      <w>skey</w>
+      <w>splpy</w>
       <w>ssorc</w>
       <w>tfidf</w>
+      <w>timeseries</w>
       <w>tokenbigrams</w>
       <w>toty</w>
       <w>vect</w>

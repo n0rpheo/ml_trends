@@ -2,7 +2,7 @@ import os
 import pandas as pd
 import numpy as np
 
-from src.utils.functions import print_scoring
+from src.utils.functions import Scoring
 
 path_to_db = "/media/norpheo/mySQL/db/ssorc"
 feature_file_path = os.path.join(path_to_db, 'popularities', 'pop_feat.pandas')
@@ -29,5 +29,6 @@ prediction_random = np.random.choice(len(unique), len(targets), p=weighted_chanc
 #prediction_random = np.random.choice(len(unique), len(targets), p=unweighted_chance)
 prediction_majority = np.full(len(targets), 0)
 
-print_scoring(targets, prediction_random)
-print_scoring(targets, prediction_majority)
+scoring = Scoring(targets, prediction_random)
+scoring.print()
+#print_scoring(targets, prediction_majority)

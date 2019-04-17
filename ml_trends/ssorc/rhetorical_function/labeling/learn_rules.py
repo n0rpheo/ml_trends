@@ -112,7 +112,7 @@ def findrulesbyphrase(category_, search_phrases):
     return new_rules_, phrase_freqs, rule_phrase_count
 
 
-def find_and_select_rules_by_phrases(category_, select_top_, phrases_):
+def find_and_select_rules_by_phrases(select_top_, phrases_):
     print("Find Rules by Phrases started.")
     t1 = time()
     chunk_phrases = [phrases_[i:i+chunk_size] for i in range(0, len(phrases_), chunk_size)]
@@ -241,7 +241,7 @@ for category in [j for j in rules if j in cat_set]:
         print()
         print(str(len(phrases)) + " Phrases found.")
 
-        new_rules = find_and_select_rules_by_phrases(category, select_top_n, phrases)
+        new_rules = find_and_select_rules_by_phrases(select_top_n, phrases)
         print()
 
         if len(new_rules) == 0:

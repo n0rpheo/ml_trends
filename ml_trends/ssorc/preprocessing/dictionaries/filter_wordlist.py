@@ -24,6 +24,8 @@ with open(os.path.join(path_to_dictionaries, sw_filename)) as sw_file:
         if len(sword) > 0:
             stopwords.add(sword)
 
+print(stopwords)
+
 nowords = set()
 # Adding Tokens to stoplist that are not considered as "words"
 for idx in dictionary:
@@ -37,6 +39,7 @@ for idx in dictionary:
         nowords.add(word)
 
 # Filter Stopwords
+print(dictionary)
 dictionary.filter_tokens(bad_ids=[dictionary.token2id[stopword] for stopword in stopwords if stopword in dictionary.token2id])
 dictionary.filter_tokens(bad_ids=[dictionary.token2id[stopword] for stopword in nowords if stopword in dictionary.token2id])
 print(dictionary)
