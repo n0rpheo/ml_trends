@@ -6,11 +6,11 @@ from src.utils.LoopTimer import LoopTimer
 
 path_to_db = "/media/norpheo/mySQL/db/ssorc"
 
-nlp = spacy.load(os.path.join(path_to_db, "models", "en_core_web_sm_nertrained_v3"))
+nlp = spacy.load(os.path.join(path_to_db, "models", "en_core_web_lg_mlalgo_v1"))
 #nlp = spacy.load("en_core_web_sm")
 
 # training data
-with open(os.path.join(path_to_db, "NER", "spacy_ner_mlalgo_traindata_th1_all.pickle"), "rb") as handle:
+with open(os.path.join(path_to_db, "NER", "spacy_ner_mlalgo_traindata_th2_all.pickle"), "rb") as handle:
     TRAIN_DATA = pickle.load(handle)
 
 n_tp = 0
@@ -79,7 +79,7 @@ for td in TRAIN_DATA:
             fn_list.add(text[e_range_gold[0]:e_range_gold[1]])
     """
 
-    lt.update(f"Test - tp: {n_tp}, fp: {n_fp}, fn: {n_fn}, inter: {n_inter}")
+    breaker = lt.update(f"Test - tp: {n_tp}, fp: {n_fp}, fn: {n_fn}, inter: {n_inter}")
 
 print()
 print(f"TP: {n_tp}")

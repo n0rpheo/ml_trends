@@ -10,10 +10,39 @@ from src.utils.LoopTimer import LoopTimer
 
 
 path_to_db = "/media/norpheo/mySQL/db/ssorc"
+nlp_model = "en_wa_v2"
+
+path_to_rfl = os.path.join(path_to_db, "rf_labeling", nlp_model)
+path_to_annotations = os.path.join(path_to_db, "annotations_version", nlp_model)
+path_to_features = os.path.join(path_to_rfl, "features")
+path_to_dictionaries = os.path.join(path_to_db, "dictionaries", nlp_model)
+
+if not os.path.isdir(path_to_rfl):
+    print(f"Create Directory {path_to_rfl}")
+    os.mkdir(path_to_rfl)
+
+if not os.path.isdir(path_to_features):
+    print(f"Create Directory {path_to_features}")
+    os.mkdir(path_to_features)
+
+"""
+ #
+ # Infos
+ #
+"""
+
+info_name = f"rf_set.info"  # output
+target_path = os.path.join(path_to_rfl, "gold_labels", 'rf_targets.pickle')  # Target Input
+
+"""
+ #
+ #
+ #
+"""
 
 feat_file_name = "rf_pruned_features"  # output_name
 
-target_path = os.path.join(path_to_db, 'features', 'rf_targets.pickle')  # Target Input
+
 
 worddb_path = os.path.join(path_to_db, 'pandas', 'ml_word.pandas')
 posdb_path = os.path.join(path_to_db, 'pandas', 'ml_pos.pandas')
@@ -373,4 +402,4 @@ feature_dict["targets"] = target_vector
 feature_dict["settings"] = settings
 
 with open(feature_file_path, "wb") as feature_file:
-    pickle.dump(feature_dict, f"{feature_file}.pickle")
+    pickle.dump(feature_dict, feature_file)

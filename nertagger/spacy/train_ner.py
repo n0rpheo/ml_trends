@@ -14,22 +14,24 @@ path_to_db = "/media/norpheo/mySQL/db/ssorc"
 path_to_fig_save = "/media/norpheo/Daten/Masterarbeit/thesis/Results/fig"
 
 # training data
-with open(os.path.join(path_to_db, "NER", "spacy_ner_mlalgo_traindata_th1.pickle"), "rb") as handle:
+with open(os.path.join(path_to_db, "NER", "mlalgo_traindata_th3_withacronyms.pickle"), "rb") as handle:
     TRAIN_DATA = pickle.load(handle)
 
 n_train_data = len(TRAIN_DATA)
 
+print(n_train_data)
+exit()
 
-model = "en_core_web_sm"
-new_model_name = "en_core_web_sm_mlalgo_test"
-input_dir = os.path.join(path_to_db, "models", "en_core_web_sm_nertrained_v3")
-output_dir = os.path.join(path_to_db, "models", "en_core_web_sm_nertrained_v3")
+model = "en_core_web_lg"
+new_model_name = "en_wa_v2"
+input_dir = os.path.join(path_to_db, "models", "en_wa_v2")
+output_dir = os.path.join(path_to_db, "models", "en_wa_v2")
 n_iter = 1000
 random.seed(0)
 
 nlp = spacy.load(input_dir)  # load existing spaCy model
 #nlp = spacy.load(model)
-print(f"Loaded model new")
+print(f"Train Model {output_dir}")
 
 if "ner" not in nlp.pipe_names:
     ner = nlp.create_pipe("ner")
@@ -98,7 +100,7 @@ for itn in range(n_iter):
         Y = np.array(y_top_list)
 
         plt.plot(X, Y)
-        plt.savefig(os.path.join(path_to_fig_save, "ner_training_los.png"))
+        plt.savefig(os.path.join(path_to_fig_save, f"ner_{new_model_name}_training_los.png"))
 
 
 X = np.array(x_list)

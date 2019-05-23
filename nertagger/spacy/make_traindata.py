@@ -8,20 +8,21 @@ import pandas as pd
 from src.utils.LoopTimer import LoopTimer
 
 path_to_db = "/media/norpheo/mySQL/db/ssorc"
-path_to_annotations = os.path.join(path_to_db, "annotations_ner")
+
+nlp_model = "en_wa_v2"
+path_to_annotations = os.path.join(path_to_db, "annotations_version", nlp_model)
 pandas_path = os.path.join(path_to_db, "pandas")
 path_to_ner = os.path.join(path_to_db, "NER")
 
-threshold = 2
+threshold = 3
 
-nlp = spacy.load(os.path.join(path_to_db, "models", "en_core_web_sm_nertrained"))
-#nlp = spacy.load("en_core_web_sm")
-#vocab = nlp.vocab
-vocab = nlp.vocab.from_disk(os.path.join(path_to_db, "dictionaries", "ner_spacy.vocab"))
+print("Loading NLP Model and Vocab")
+nlp = spacy.load(os.path.join(path_to_db, "models", nlp_model))
+vocab = nlp.vocab.from_disk(os.path.join(path_to_annotations, "spacy.vocab"))
 matcher = Matcher(vocab)
 
 mla = set()
-with open(os.path.join(path_to_ner, "ml_algos2.txt"), "r") as handle:
+with open(os.path.join(path_to_ner, "ml_algos_noacronyms.txt"), "r") as handle:
     for line in handle:
         mla.add(line.replace("\n", ""))
 
@@ -31,7 +32,7 @@ for ml_algo in mla:
     pattern_name = "".join([entity["LOWER"] for entity in pattern]).lower()
     matcher.add(pattern_name, None, pattern)
 
-infoDF = pd.read_pickle(os.path.join(path_to_db, 'pandas', 'ner_info_db.pandas'))
+infoDF = pd.read_pickle(os.path.join(path_to_annotations, 'info_db.pandas'))
 targ = len(infoDF)
 TRAIN_DATA = list()
 ent_counter = dict()
@@ -40,7 +41,21 @@ ent_counter = dict()
 #forbidden_pos = ['VERB', 'ADP']
 
 forbidden_dep = ['det', 'predet', 'nummod', 'cc', 'appos', 'punct', 'conj']
-forbidden_pos = ['ADP', 'VERB', 'X']
+forbidden_pos = ['ADP', 'VERB', 'X', 'ADV']
+
+forbidden_substrings = ['state-of-the-art', ',', '(', ')',
+                        "approaches",
+                        "approach",
+                        "algorithm",
+                        "algorithms",
+                        "based",
+                        "function",
+                        "functions",
+                        "other",
+                        "large",
+                        "larger",
+                        "twitter",
+                        "such"]
 
 collect_ml = set()
 lt = LoopTimer(update_after=200, avg_length=2000, target=targ)
@@ -97,7 +112,11 @@ for abstract_id, row in infoDF.iterrows():
             end_id = max(algo_list)
 
             entity_name = sentence[start_id:end_id+1].text.lower()
-            if ',' not in entity_name and '(' not in entity_name and ')' not in entity_name:
+            entity_text_tokens = [etoken.orth_.lower() for etoken in sentence[start_id:end_id + 1]]
+            entity_pos_tokens = [etoken.pos_ for etoken in sentence[start_id:end_id + 1]]
+            if (all([(forbidden_string not in entity_text_tokens) for forbidden_string in forbidden_substrings]) and
+                    all([(forbidden_pos_t not in entity_pos_tokens) for forbidden_pos_t in forbidden_pos]) and
+                    ("markov model" in entity_name) ** ("model" in entity_name or "models" in entity_name)):
                 start_idx = sentence[start_id].idx
                 end_idx = sentence[end_id].idx + len(sentence[end_id])
 
@@ -108,7 +127,7 @@ for abstract_id, row in infoDF.iterrows():
                     en_idx_list = list()
                     en_count = 0
 
-                if en_count < 500000:
+                if en_count < 50000:
 
                     en_count += 1
                     en_idx_list.append({"sid": len(TRAIN_DATA), "entid": len(ent_list)})
@@ -117,15 +136,18 @@ for abstract_id, row in infoDF.iterrows():
 
                     entity = (start_idx, end_idx, "MLALGO")
                     ent_list.append(entity)
+
+                #print(f"Add: {entity_name}")
+                #pos_string = " ".join([sentence[tid].tag_ for tid in range(start_id, end_id+1)])
+                #print(f'     {pos_string}')
         if len(ent_list) > 0:
             entities = {"entities": ent_list}
             TRAIN_DATA.append((sentence.text, entities))
 
     breaker = lt.update(f"Make TD - {len(TRAIN_DATA)}")
 
-    if breaker > 100000:
-        break
-
+    #if breaker > 100000:
+    #    break
 
 print()
 for entity_name in ent_counter:
@@ -154,5 +176,7 @@ print()
 for j in range(TRAIN_DATA.count(None)):
     TRAIN_DATA.remove(None)
 print(len(TRAIN_DATA))
-with open(os.path.join(path_to_db, "NER", "spacy_ner_mlalgo_traindata_th2_all.pickle"), "wb") as handle:
+
+exit()
+with open(os.path.join(path_to_ner, f"mlalgo_traindata_th{threshold}_noacronyms.pickle"), "wb") as handle:
     pickle.dump(TRAIN_DATA, handle)

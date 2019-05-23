@@ -11,11 +11,21 @@ from src.utils.LoopTimer import LoopTimer
 from src.utils.functions import Scoring
 
 path_to_db = "/media/norpheo/mySQL/db/ssorc"
-feature_file_path = os.path.join(path_to_db, 'popularities', 'pop_feat_late.pandas')
+nlp_model = "en_wa_v2"
+path_to_popularities = os.path.join(path_to_db, "popularities", nlp_model)
 
-print(feature_file_path)
+"""
+    Infos
+"""
 
-featureFrame = pd.read_pickle(feature_file_path)
+feature_file_name = "pop_feat.pandas"
+
+"""
+    #####################
+"""
+print(feature_file_name)
+
+featureFrame = pd.read_pickle(os.path.join(path_to_popularities, feature_file_name))
 
 flength = len(featureFrame.columns)
 
@@ -89,7 +99,7 @@ prediction = lr_model.predict(holdback_features)
 
 scoring = Scoring(holdback_targets, prediction)
 
-#scoring.print()
-scoring.save(path="/media/norpheo/Daten/Masterarbeit/thesis/Results/sheets/pop_tracking.tsv",
-             title=f"Pop-Tracking Late, LR @ {best_para}",
-             open_mode='a')
+scoring.print()
+#scoring.save(path="/media/norpheo/Daten/Masterarbeit/thesis/Results/sheets/pop_tracking.tsv",
+#             title=f"Pop-Tracking Late, LR @ {best_para}",
+#             open_mode='a')

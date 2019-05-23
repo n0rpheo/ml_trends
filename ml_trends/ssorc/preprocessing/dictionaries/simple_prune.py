@@ -2,6 +2,9 @@ import os
 import gensim
 
 path_to_db = "/media/norpheo/mySQL/db/ssorc"
+#nlp_model = "en_core_web_sm_nertrained_v3"
+nlp_model = "en_core_web_lg_mlalgo_v1"
+path_to_dictionaries = os.path.join(path_to_db, "dictionaries", nlp_model)
 token_types = ["word",
                "wordbigram",
                #"pos",
@@ -10,9 +13,10 @@ token_types = ["word",
                "lemmabigram",
                #"wordRetokenized",
                #"coarse_pos",
-               #"coarse_posbigram"
+               #"coarse_posbigram",
+               "merged_word"
                ]
-dic_paths = [os.path.join(path_to_db, "dictionaries", f"aiml_full_{toty}_pd.dict") for toty in token_types]
+dic_paths = [os.path.join(path_to_dictionaries, f"full_{toty}.dict") for toty in token_types]
 
 for i in range(len(token_types)):
     token_type = token_types[i]
@@ -27,5 +31,5 @@ for i in range(len(token_types)):
     print(f"No Below:{no_below_num}")
     print(f"Len: {len(dictionary)}")
     print("-----------------------")
-    new_dic_path = os.path.join(path_to_db, "dictionaries", f"aiml_pruned_{token_type}_pd.dict")
+    new_dic_path = os.path.join(path_to_dictionaries, f"pruned_{token_type}.dict")
     dictionary.save(new_dic_path)

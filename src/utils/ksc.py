@@ -42,6 +42,8 @@ class KSpectralCluster:
 
         series = df[self.d_range].values.tolist()
 
+        optimal_cluster = None
+
         for trend_type in self.trend_types:
             cluster = self.trendFrame[trend_type][self.d_range].values.tolist()
             dist = distance(series, cluster)

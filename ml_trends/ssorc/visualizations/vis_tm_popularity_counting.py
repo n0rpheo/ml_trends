@@ -2,32 +2,37 @@ import os
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
+from spacy.vocab import Vocab
+from spacy.tokens import Doc
 
 from src.utils.LoopTimer import LoopTimer
 
+nlp_model = "en_wa_v2"
+
 path_to_db = "/media/norpheo/mySQL/db/ssorc"
 path_to_fig_save = "/media/norpheo/Daten/Masterarbeit/thesis/Results/fig/topic_modeling"
-
-model_file_name = "aiml_tm_lda_500topics_merged_word.pickle"
-dic_file_name = "aiml_tm_dictionary_merged.dict"
+path_to_annotations = os.path.join(path_to_db, "annotations_version", nlp_model)
 
 track_topics = {"SVM": ["svm", "support vector machine"],
                 "NN": ["neural network", "deep learning"],
                 "PCA": ["pca", "principal component analysis"]}
 
-wordDF = pd.read_pickle(os.path.join(path_to_db, "pandas", "aiml_ner_merged_word.pandas"))
-infoDF = pd.read_pickle(os.path.join(path_to_db, "pandas", "ner_info_db.pandas"))
-df = infoDF.join(wordDF)
-
 timeseries = dict()
 for topic in track_topics:
     timeseries[topic] = dict()
 year_count = dict()
-lc = LoopTimer(update_after=100, avg_length=5000, target=len(df))
-for abstract_id, row in df.iterrows():
+
+print("Loading Vocab")
+vocab = Vocab().from_disk(os.path.join(path_to_annotations, "spacy.vocab"))
+infoDF = pd.read_pickle(os.path.join(path_to_annotations, 'info_db.pandas'))
+
+lt = LoopTimer(update_after=200, avg_length=1000, target=len(infoDF))
+for abstract_id, row in infoDF.iterrows():
+    file_path = os.path.join(path_to_annotations, f"{abstract_id}.spacy")
+    doc = Doc(vocab).from_disk(file_path)
 
     year = row['year']
-    text = row['merged_word'].replace("\t\t", " ").replace("\t", " ").lower()
+    text = doc.text.lower()
 
     if year not in year_count:
         year_count[year] = 0
@@ -40,7 +45,7 @@ for abstract_id, row in df.iterrows():
             if topic_word in text:
                 timeseries[topic][year] += 1
 
-    breaker = lc.update("Model Topics")
+    breaker = lt.update("Model Topics")
 print()
 
 for topic in track_topics:

@@ -30,6 +30,7 @@
       <w>lemmadb</w>
       <w>lkey</w>
       <w>loadrules</w>
+      <w>longform</w>
       <w>mlalgo</w>
       <w>mllr</w>
       <w>mlsvc</w>
@@ -49,6 +50,7 @@
       <w>skey</w>
       <w>splpy</w>
       <w>ssorc</w>
+      <w>subtoken</w>
       <w>tfidf</w>
       <w>timeseries</w>
       <w>tokenbigrams</w>

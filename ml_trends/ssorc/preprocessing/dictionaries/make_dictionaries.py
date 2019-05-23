@@ -7,33 +7,39 @@ from src.utils.functions import makeBigrams
 
 
 path_to_db = "/media/norpheo/mySQL/db/ssorc"
-pandas_path = os.path.join(path_to_db, "pandas")
+#nlp_model = "en_core_web_sm_nertrained_v3"
+nlp_model = "en_wa_v2"
+path_to_pandas = os.path.join(path_to_db, "pandas", nlp_model)
+path_to_dictionaries = os.path.join(path_to_db, "dictionaries", nlp_model)
+if not os.path.isdir(path_to_dictionaries):
+    print(f"Create Directory {path_to_dictionaries}")
+    os.mkdir(path_to_dictionaries)
 
-token_types = [#"word",
-               #"wordbigram",
-               #"pos",
-               #"posbigram",
-               #"lemma",
-               #"lemmabigram",
-               #"coarse_pos",
-               #"coarse_posbigram",
+token_types = ["word",
+               "wordbigram",
+               "pos",
+               "posbigram",
+               "lemma",
+               "lemmabigram",
+               "coarse_pos",
+               "coarse_posbigram",
                #"ent_type",
-               #"merged_word",
+               "merged_word",
                #"merged_ent_type",
-               "word_lower_merged"
+               #"word_lower_merged"
                ]
-dic_paths = [os.path.join(path_to_db, "dictionaries", f"aiml_full_ner_{toty}.dict") for toty in token_types]
+dic_paths = [os.path.join(path_to_dictionaries, f"full_{toty}.dict") for toty in token_types]
 
 print("Loading Panda DB")
-wordDF = pd.read_pickle(os.path.join(pandas_path, 'aiml_ner_word.pandas'))
-lemmaDF = pd.read_pickle(os.path.join(pandas_path, 'aiml_ner_lemma.pandas'))
-fineposDF = pd.read_pickle(os.path.join(pandas_path, 'aiml_ner_finepos.pandas'))
-coarseposDF = pd.read_pickle(os.path.join(pandas_path, 'aiml_ner_coarsepos.pandas'))
-mergedwordDF = pd.read_pickle(os.path.join(pandas_path, 'aiml_ner_merged_word.pandas'))
-wordlowermergedDF = pd.read_pickle(os.path.join(pandas_path, 'aiml_word_lower_merged.pandas'))
+wordDF = pd.read_pickle(os.path.join(path_to_pandas, 'word.pandas'))
+lemmaDF = pd.read_pickle(os.path.join(path_to_pandas, 'lemma.pandas'))
+fineposDF = pd.read_pickle(os.path.join(path_to_pandas, 'finepos.pandas'))
+coarseposDF = pd.read_pickle(os.path.join(path_to_pandas, 'coarsepos.pandas'))
+mergedwordDF = pd.read_pickle(os.path.join(path_to_pandas, 'merged_word.pandas'))
+#wordlowermergedDF = pd.read_pickle(os.path.join(pandas_path, 'aiml_word_lower_merged.pandas'))
 print("Done Loading")
 
-df = wordDF.join(lemmaDF).join(fineposDF).join(coarseposDF).join(mergedwordDF).join(wordlowermergedDF)
+df = wordDF.join(lemmaDF).join(fineposDF).join(coarseposDF).join(mergedwordDF)  # .join(wordlowermergedDF)
 
 for i in range(len(token_types)):
     token_type = token_types[i]

@@ -1,41 +1,36 @@
-import os
-import pandas as pd
-import spacy
-from spacy.tokens import Doc
-
-from src.utils.LoopTimer import LoopTimer
+import cvxpy as cp
+import numpy as np
 
 
-path_to_db = "/media/norpheo/mySQL/db/ssorc"
-path_to_annotations = os.path.join(path_to_db, "annotations_ner")
-pandas_path = os.path.join(path_to_db, "pandas")
+def test_func(x, l):
 
-nlp = spacy.load(os.path.join(path_to_db, "models", "en_core_web_sm_nertrained"))
-vocab = nlp.vocab.from_disk(os.path.join(path_to_db, "dictionaries", "ner_spacy.vocab"))
+     intersection = 0
+     union = 0
+     for xv, lv in zip(x, l):
+          intersection += xv*lv
+          union += (xv+lv) - (xv*lv)
+     return cp.sum(union)
 
-infoDF = pd.read_pickle(os.path.join(path_to_db, 'pandas', 'ner_info_db.pandas'))
 
-targ = len(infoDF)
-lt = LoopTimer(update_after=100, avg_length=10000, target=targ)
+n = 2    # number of mentions
+m = 1     # number of clusters
 
-year_df = dict()
-ml_algo = "neural network"
-years = set()
-for abstract_id, row in infoDF.iterrows():
-    file_path = os.path.join(path_to_annotations, f"{abstract_id}.spacy")
-    doc = Doc(vocab).from_disk(file_path)
-    abstract = doc.text.lower()
-    year = row['year']
+# Create two scalar optimization variables.
+x = cp.Variable(3, boolean=True)
 
-    if ml_algo in abstract:
-        if year not in year_df:
-            years.add(year)
-            year_df[year] = 0
-        year_df[year] += 1
-    breaker = lt.update(f"Create MLalgo")
-    if breaker > 100:
-        break
+# Create two constraints.
+constraints = [sum(x) <= 2,
+               -sum(x) <= -1]
 
-year_sort = sorted(list(years), reverse=False)
-for year in year_sort:
-    print(f"{year}: {year_df[year]}")
+# Form objective.
+
+ll = [1, 1, 1]
+
+obj = cp.Minimize(sum([-test_func(x, ll)*i for i in range(5)]))
+
+# Form and solve problem.
+prob = cp.Problem(obj, constraints)
+prob.solve()  # Returns the optimal value.
+print("status:", prob.status)
+print("optimal value", prob.value)
+print("optimal var", [round(xv.value, 0) for xv in x])

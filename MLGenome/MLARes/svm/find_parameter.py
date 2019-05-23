@@ -11,9 +11,11 @@ from src.utils.functions import Scoring
 reg_paras = list()
 
 for i in range(1, 10):
-    reg_paras.append(i/10)
-for i in range(0, 10):
-    reg_paras.append(1+i)
+    reg_paras.append(i/100)
+#for i in range(1, 10):
+#    reg_paras.append(i/10)
+#for i in range(0, 10):
+#    reg_paras.append(1+i)
 #for i in range(1, 10):
 #    reg_paras.append(10+i*10)
 #for i in range(1, 10):
@@ -26,20 +28,16 @@ for i in range(0, 10):
 #    reg_paras.append(100000 + i*100000)
 
 #reg_paras = [100000, 300000, 500000]
+
 path_to_db = "/media/norpheo/mySQL/db/ssorc"
-nlp_model = "en_wa_v2"
-path_to_rfl = os.path.join(path_to_db, "rhet_func_labeling", nlp_model)
+nlp_model = "en_core_web_lg_mlalgo_v1"
 
+path_to_mlgenome = os.path.join(path_to_db, "mlgenome", nlp_model)
+path_to_mlgenome_features = os.path.join(path_to_mlgenome, "features")
+feature_file_path = os.path.join(path_to_mlgenome_features, "entlinking_features.pickle")
 
-"""
-
-"""
-feature_info_name = "feature_info.pickle"
-"""
-"""
-
-with open(os.path.join(path_to_rfl, f"{feature_info_name}.pickle"), "rb") as handle:
-    feature_dict = pickle.load(handle)
+with open(os.path.join(path_to_mlgenome_features, feature_file_path), "rb") as feature_file:
+    feature_dict = pickle.load(feature_file)
 
 all_features = feature_dict["features"]
 all_targets = feature_dict["targets"]

@@ -2,7 +2,6 @@ import os
 import pickle
 import pandas as pd
 
-from src.modules.topic_modeling import TopicModelingGLDA
 from src.modules.topic_modeling import TopicModelingLDA
 from src.modules.abstract_parser import AbstractParser
 from src.utils.LoopTimer import LoopTimer

@@ -1,37 +1,59 @@
 import os
-import spacy
+import pandas as pd
+import pickle
+
+from spacy.tokens import Doc
+from spacy.vocab import Vocab
 
 
-
-
-
-
-
-
-
-lst = [1, 2, None, None, None, 5, 6, 7]
-print(lst)
-for i in range(lst.count(None)):
-    lst.remove(None)
-
-print(lst)
-exit()
-
-
+from src.utils.LoopTimer import LoopTimer
 
 
 path_to_db = "/media/norpheo/mySQL/db/ssorc"
-nlp = spacy.load(os.path.join(path_to_db, "models", "en_core_web_sm_nertrained"))
-vocab = nlp.vocab.from_disk(os.path.join(path_to_db, "dictionaries", "ner_spacy.vocab"))
+nlp_model = "en_core_web_lg_mlalgo_v1"
 
-nlp = spacy.load("en_core_web_sm")
-#apple = nlp.vocab.strings["apple"]
+path_to_mlgenome = os.path.join(path_to_db, "mlgenome", nlp_model)
+path_to_annotations = os.path.join(path_to_db, "annotations_version", nlp_model)
+with open(os.path.join(path_to_mlgenome, "acronyms.pickle"), "rb") as handle:
+    acronym_dictionary = pickle.load(handle)
 
-doc = nlp("Building a computational model for how the visual cortex identifies objects is a problem that has attracted much attention over the years. Generally, the interest has been in creating models that are translation, rotation, and luminance invariant. In this paper, we utilize the philosophy of Hough Transform to create a model for detecting straight lines under conditions of discontinuity and noise. A neural network that can learn to perform a Hough Transform-like computation in an unsupervised manner is the main takeaway from this work. Performance of the network when presented with straight lines is compared with that of human subjects. Optical illusions like the Poggendorff illusion could potentially find an explanation in the framework of our model.")
+vocab = Vocab().from_disk(os.path.join(path_to_annotations, "spacy.vocab"))
+infoDF = pd.read_pickle(os.path.join(path_to_annotations, 'info_db.pandas'))
 
-#print(apple)
-#print(nlp.vocab.strings[399])
-#print(nlp.vocab.strings[7972625988311165362])
+targ = len(infoDF)
 
-for token in doc:
-    print(f"{token.head} -> {token.dep_} ({token.dep}) -> {token.text}")
+lt = LoopTimer(update_after=10, avg_length=1000, target=targ)
+
+acronyms = set()
+adds = list()
+
+for abstract_id, row in infoDF.iterrows():
+    file_path = os.path.join(path_to_annotations, f"{abstract_id}.spacy")
+    doc = Doc(vocab).from_disk(file_path)
+
+    for ent in doc.ents:
+        entity = ent.text.lower()
+
+        if entity in acronym_dictionary:
+            acronyms.add(entity)
+            continue
+
+        added = 0
+
+        for acronym in acronym_dictionary:
+            long_forms = acronym_dictionary[acronym]
+
+            if entity in long_forms:
+                acronyms.add(acronym)
+                added += 1
+
+        if added > 0:
+            adds.append(added)
+    lt.update(f"Get Acronyms - {len(acronyms)}")
+
+for acronym in acronyms:
+    print(f"{acronym}: {acronym_dictionary[acronym]}")
+
+print(max(adds))
+print(sum(adds) / len(adds))
+

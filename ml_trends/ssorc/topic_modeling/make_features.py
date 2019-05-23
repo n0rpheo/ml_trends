@@ -8,28 +8,38 @@ import pickle
 from src.utils.LoopTimer import LoopTimer
 
 path_to_db = "/media/norpheo/mySQL/db/ssorc"
-path_to_tm = os.path.join(path_to_db, "topic_modeling")
+nlp_model = "en_core_web_sm_nertrained_v3"
+path_to_tm = os.path.join(path_to_db, "topic_modeling", nlp_model)
+path_to_features = os.path.join(path_to_tm, "features")
+path_to_dictionaries = os.path.join(path_to_db, "dictionaries", nlp_model)
+path_to_pandas = os.path.join(path_to_db, "pandas", nlp_model)
+
+if not os.path.isdir(path_to_tm):
+    print(f"Create Directory {path_to_tm}")
+    os.mkdir(path_to_tm)
+    print(f"Create Directory {path_to_features}")
+    os.mkdir(path_to_features)
 
 """
  #
  # Infos
  #
 """
-feature_file_name = 'aiml_tm_features_word_lower_merged.npz'  # output
-info_name = "word_lower_merged.info"  # output
+feature_file_name = 'features_pruned_merged_word.npz'  # output
+info_name = "pruned_merged_word.info"  # output
 
-dic_name = "aiml_full_ner_word_lower_merged.dict"
-pandas_name = "aiml_word_lower_merged.pandas"
+dic_name = "pruned_merged_word.dict"
+pandas_name = "merged_word.pandas"
 
-col_name = "word_lower_merged"
+col_name = "merged_word"
 """
  #
  #
  #
 """
 
-tokenDF = pd.read_pickle(os.path.join(path_to_db, "pandas", pandas_name))
-dictionary = gensim.corpora.Dictionary.load(os.path.join(path_to_db, "dictionaries", dic_name))
+tokenDF = pd.read_pickle(os.path.join(path_to_pandas, pandas_name))
+dictionary = gensim.corpora.Dictionary.load(os.path.join(path_to_dictionaries, dic_name))
 print(f"Length of Dic: {len(dictionary)}")
 
 num_samples = -1
@@ -62,12 +72,12 @@ data = np.array(data)
 
 feature_vector = scipy.sparse.csr_matrix((data, (row, col)), shape=(m, n))
 
-scipy.sparse.save_npz(os.path.join(path_to_tm, "features", feature_file_name), feature_vector)
+scipy.sparse.save_npz(os.path.join(path_to_features, feature_file_name), feature_vector)
 
 info = dict()
-info['dic_path'] = os.path.join(path_to_db, "dictionaries", dic_name)
-info['feature_path'] = os.path.join(path_to_tm, "features", feature_file_name)
-info['pandas_path'] = os.path.join(path_to_db, "pandas", pandas_name)
+info['dic_path'] = os.path.join(path_to_dictionaries, dic_name)
+info['feature_path'] = os.path.join(path_to_features, feature_file_name)
+info['pandas_path'] = os.path.join(path_to_pandas, pandas_name)
 
 with open(os.path.join(path_to_db, "topic_modeling", info_name), "wb") as handle:
     pickle.dump(info, handle)

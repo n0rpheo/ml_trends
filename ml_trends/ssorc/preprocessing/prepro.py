@@ -24,7 +24,7 @@ nlp_model_standard = 'en_core_web_sm'
 NLP with Trained NER
 ==================================
 """
-nlp_model_trained = "en_core_web_sm_nertrained_v3"
+nlp_model_trained = "en_wa_v2"
 nlp_model_trained_path = os.path.join(path_to_db, "models", nlp_model_trained)
 #component = nlp_ner.create_pipe("merge_entities")
 #nlp_ner.add_pipe(component)
@@ -80,29 +80,6 @@ req_keys = ['title',
             'entities',
             'journalName',
             'venue']
-"""
-journals = ["neurocomputing",
-            "machine learning",
-            "journal of machine learning research",
-            "neural networks : the official journal of the international neural network society",
-            "ai magazine",
-            "artif. intell."]
-venues = ["icml",
-          "nips",
-          "aaai",
-          "journal of machine learning research",
-          "ijcai",
-          "machine learning",
-          "cikm",
-          "ai magazine",
-          "icdm",
-          "kdd",
-          "uai",
-          "cvpr",
-          "iclr",
-          "wsdm",
-          "aistats"]
-"""
 
 journals = list()
 venues = list()
@@ -125,7 +102,7 @@ key_error = 0
 mass_error = 0
 prune_error = 0
 
-lt = LoopTimer(update_after=100, avg_length=1000000, target=target)
+lt = LoopTimer(update_after=500, avg_length=1000000, target=target)
 for filename in file_list[filerange[0]:filerange[1]]:
     cur_path = os.path.join(raw_dir, filename)
     with open(cur_path) as file:
